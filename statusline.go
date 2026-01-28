@@ -277,12 +277,23 @@ func main() {
 	fmt.Printf("%s│ %s | %s | %s | %s%s\n", ColorDim, sessionInfo, burnRate, costInfo, cacheHitRate, ColorReset)
 }
 
-// 從 Keychain 獲取 OAuth Token
+// 獲取 OAuth Token (支援 Linux 和 macOS)
 func getOAuthToken() string {
-	cmd := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w")
-	output, err := cmd.Output()
+	var output []byte
+	var err error
+
+	// 先嘗試 Linux: 從 ~/.claude/.credentials.json 讀取
+	homeDir, _ := os.UserHomeDir()
+	credFile := filepath.Join(homeDir, ".claude", ".credentials.json")
+	output, err = os.ReadFile(credFile)
+
+	// 如果檔案不存在，嘗試 macOS Keychain
 	if err != nil {
-		return ""
+		cmd := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w")
+		output, err = cmd.Output()
+		if err != nil {
+			return ""
+		}
 	}
 
 	// 解析 JSON 取得 access_token (nested structure)
