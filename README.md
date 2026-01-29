@@ -128,6 +128,40 @@ go build -o statusline statusline.go
 - **Pomodoro 計時器**：內建番茄工作法計時
 - **快捷鍵提示**：顯示常用快捷鍵
 
+## 成本計算公式
+
+本程式使用以下公式計算 API 成本：
+
+```
+總成本 = (Input Tokens × Input Price / 1,000,000)
+       + (Output Tokens × Output Price / 1,000,000)
+       + (Cache Read Tokens × Cache Read Price / 1,000,000)
+       + (Cache Write Tokens × Cache Write Price / 1,000,000)
+```
+
+### 目前使用的定價（Per Million Tokens）
+
+| 模型 | Input | Output | Cache Read | Cache Write (5m) |
+|------|-------|--------|------------|------------------|
+| **Opus** | $5.00 | $25.00 | $0.50 | $6.25 |
+| **Sonnet** | $3.00 | $15.00 | $0.30 | $3.75 |
+| **Haiku** | $1.00 | $5.00 | $0.10 | $1.25 |
+
+> 定價更新於 2026 年 1 月，適用於 Opus 4.5、Sonnet 4/4.5、Haiku 4.5
+
+### Anthropic 官方定價參考
+
+| 模型 | Input | Output | Cache Read | Cache Write (5m) |
+|------|-------|--------|------------|------------------|
+| **Opus 4.5** | $5.00 | $25.00 | $0.50 | $6.25 |
+| **Opus 4.1/4** | $15.00 | $75.00 | $1.50 | $18.75 |
+| **Sonnet 4.5/4** | $3.00 | $15.00 | $0.30 | $3.75 |
+| **Haiku 4.5** | $1.00 | $5.00 | $0.10 | $1.25 |
+| **Haiku 3.5** | $0.80 | $4.00 | $0.08 | $1.00 |
+| **Haiku 3** | $0.25 | $1.25 | $0.03 | $0.30 |
+
+官方定價頁面：[Anthropic Pricing](https://platform.claude.com/docs/en/about-claude/pricing)
+
 ## 授權
 
 MIT License
