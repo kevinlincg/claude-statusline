@@ -481,12 +481,12 @@ func formatAPILimitWide(usage *APIUsage, limitType string) string {
 		resetTime = usage.SevenDay.ResetsAt
 	}
 
-	bar := generateUsageBar(pct, 10)
+	bar := generateUsageBar(pct, 14)
 	timeLeft := formatTimeLeftShort(resetTime)
 	color := getUsageColor(pct)
 
-	// 格式：5hr ██░░░░░░░░  23%     (3h17m)
-	return fmt.Sprintf("%s %s  %s%3d%%%s   (%s)", limitType, bar, color, pct, ColorReset, timeLeft)
+	// 格式：5hr ██████░░░░░░░░ 23% (3h17m)
+	return fmt.Sprintf("%s %s %s%3d%%%s (%s)", limitType, bar, color, pct, ColorReset, timeLeft)
 }
 
 // 格式化剩餘時間（更短）
@@ -564,11 +564,11 @@ func formatContextBarWide(transcriptPath string) string {
 		percentage = 100
 	}
 
-	bar := generateUsageBar(percentage, 10)
+	bar := generateUsageBar(percentage, 14)
 	color := getContextColor(percentage)
 	num := formatNumberFixed(contextLength)
 
-	return fmt.Sprintf("Ctx  %s  %s%3d%%%s    %s", bar, color, percentage, ColorReset, num)
+	return fmt.Sprintf("Ctx  %s %s%3d%%%s %s", bar, color, percentage, ColorReset, num)
 }
 
 // 生成用量進度條
