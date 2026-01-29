@@ -248,43 +248,46 @@ func main() {
 	updateDailyStats(input.SessionID, sessionUsage, modelType)
 
 	// 格式化輸出
-	modelDisplay := formatModel(input.Model.DisplayName)
+	modelDisplay := formatModelShort(input.Model.DisplayName)
 	projectPath := formatProjectPath(input.Workspace.CurrentDir)
-	gitDisplay := formatGitInfo(gitInfo)
+	gitDisplay := formatGitInfoCompact(gitInfo)
 
-	// 第一行：模型 + 路徑 + Git（可變長度資訊）
-	fmt.Printf("%s[%s] %s%s%s\n",
-		ColorReset, modelDisplay, projectPath, gitDisplay, ColorReset)
+	// 第一行：模型右對齊
+	modelLine := fmt.Sprintf("[%s]", modelDisplay)
+	fmt.Printf("%s%80s%s\n", ColorReset, modelLine, ColorReset)
 
-	// 使用 padRight 函數確保視覺寬度一致
-	// 欄位寬度：Label=10, Col1=32, Col2=32
+	// 第二行：路徑 + Git
+	fmt.Printf("%s📂 %s%s  %s%s\n",
+		ColorReset, projectPath, ColorReset, gitDisplay, ColorReset)
 
-	// 第二行：API 限制
-	api5hr := formatAPILimit(apiUsage, "5hr")
-	api7day := formatAPILimit(apiUsage, "7day")
-	fmt.Printf("%s│ %-10s│ %s │ %s │%s\n",
-		ColorDim, "API Limit", padRight(api5hr, 32), padRight(api7day, 32), ColorReset)
+	// 欄位寬度：Label=10, Col1=28, Col2=28
 
-	// 第三行：成本
-	sessCost := fmt.Sprintf("%s%s%s sess", ColorGreen, formatCostFixed(sessionUsage.Cost), ColorReset)
-	dayCost := fmt.Sprintf("%s%s%s/day", ColorGold, formatCostFixed(dailyStats.TotalCost), ColorReset)
-	wkCost := fmt.Sprintf("%s%s%s/wk", ColorBlue, formatCostFixed(weeklyStats.TotalCost), ColorReset)
+	// 第三行：API 限制
+	api5hr := formatAPILimitCompact(apiUsage, "5hr")
+	api7day := formatAPILimitCompact(apiUsage, "7day")
+	fmt.Printf("%s├─ %-9s│ %s │ %s │%s\n",
+		ColorDim, "API Limit", padRight(api5hr, 28), padRight(api7day, 28), ColorReset)
+
+	// 第四行：成本
+	sessCost := fmt.Sprintf("%s%s%s sess", ColorGreen, formatCostShort(sessionUsage.Cost), ColorReset)
+	dayCost := fmt.Sprintf("%s%s%s/day", ColorGold, formatCostShort(dailyStats.TotalCost), ColorReset)
+	wkCost := fmt.Sprintf("%s%s%s/wk", ColorBlue, formatCostShort(weeklyStats.TotalCost), ColorReset)
 	burnRate := calculateBurnRate(dailyStats)
 	costCol1 := sessCost + "  " + dayCost
 	costCol2 := wkCost + "  " + burnRate
-	fmt.Printf("%s│ %-10s│ %s │ %s │%s\n",
-		ColorDim, "Cost", padRight(costCol1, 32), padRight(costCol2, 32), ColorReset)
+	fmt.Printf("%s├─ %-9s│ %s │ %s │%s\n",
+		ColorDim, "Cost", padRight(costCol1, 28), padRight(costCol2, 28), ColorReset)
 
-	// 第四行：統計
+	// 第五行：統計
 	totalTokens := sessionUsage.InputTokens + sessionUsage.OutputTokens + sessionUsage.CacheReadTokens + sessionUsage.CacheWriteTokens
 	tokenStr := fmt.Sprintf("%s%s%s tok", ColorPurple, formatTokenCountFixed(totalTokens), ColorReset)
 	msgStr := fmt.Sprintf("%s%4d%s msg", ColorCyan, sessionUsage.MessageCount, ColorReset)
-	cacheStr := formatCacheHitRate(sessionUsage)
+	cacheStr := formatCacheHitRateShort(sessionUsage)
 	ctxStr := formatContextShort(input.TranscriptPath)
 	statsCol1 := tokenStr + "  " + msgStr
 	statsCol2 := cacheStr + "  " + ctxStr
-	fmt.Printf("%s│ %-10s│ %s │ %s │ %s%s\n",
-		ColorDim, "Stats", padRight(statsCol1, 32), padRight(statsCol2, 32), totalHours, ColorReset)
+	fmt.Printf("%s└─ %-9s│ %s │ %s │ %s%s\n",
+		ColorDim, "Stats", padRight(statsCol1, 28), padRight(statsCol2, 28), totalHours, ColorReset)
 }
 
 // 獲取 OAuth Token (支援 Linux 和 macOS)
@@ -409,6 +412,55 @@ func formatAPILimit(usage *APIUsage, limitType string) string {
 	return fmt.Sprintf("%s %s %s%3d%%%s %s", limitType, bar, color, pct, ColorReset, left)
 }
 
+// 格式化單個 API 限制（緊湊版）
+func formatAPILimitCompact(usage *APIUsage, limitType string) string {
+	if usage == nil {
+		return fmt.Sprintf("%s --", limitType)
+	}
+
+	var pct int
+	var resetTime string
+	if limitType == "5hr" {
+		pct = int(usage.FiveHour.Utilization)
+		resetTime = usage.FiveHour.ResetsAt
+	} else {
+		pct = int(usage.SevenDay.Utilization)
+		resetTime = usage.SevenDay.ResetsAt
+	}
+
+	bar := generateUsageBar(pct, 10)
+	left := formatTimeLeftShort(resetTime)
+	color := getUsageColor(pct)
+
+	return fmt.Sprintf("%s %s %s%3d%%%s %s", limitType, bar, color, pct, ColorReset, left)
+}
+
+// 格式化剩餘時間（更短）
+func formatTimeLeftShort(isoTime string) string {
+	t, err := time.Parse(time.RFC3339, isoTime)
+	if err != nil {
+		return "?"
+	}
+
+	now := time.Now()
+	diff := t.Sub(now)
+
+	if diff <= 0 {
+		return "now"
+	}
+
+	days := int(diff.Hours() / 24)
+	hours := int(diff.Hours()) % 24
+	minutes := int(diff.Minutes()) % 60
+
+	if days > 0 {
+		return fmt.Sprintf("%dd%dh", days, hours)
+	} else if hours > 0 {
+		return fmt.Sprintf("%dh%dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
+}
+
 // 格式化 Context（簡短版）
 func formatContextShort(transcriptPath string) string {
 	var contextLength int
@@ -515,6 +567,28 @@ func formatModel(model string) string {
 	return model
 }
 
+// 格式化模型顯示（簡短版）
+func formatModelShort(model string) string {
+	// 提取簡短名稱
+	shortName := model
+	if strings.Contains(model, "Opus") {
+		shortName = "Opus 4.5"
+	} else if strings.Contains(model, "Sonnet") {
+		shortName = "Sonnet 4"
+	} else if strings.Contains(model, "Haiku") {
+		shortName = "Haiku 3.5"
+	}
+
+	for key, config := range modelConfig {
+		if strings.Contains(model, key) {
+			color := config[0]
+			icon := config[1]
+			return fmt.Sprintf("%s%s %s%s", color, icon, shortName, ColorReset)
+		}
+	}
+	return shortName
+}
+
 // 獲取 Git 資訊（分支名稱 + 狀態）
 func getGitInfo() GitInfo {
 	result := GitInfo{}
@@ -584,6 +658,31 @@ func formatGitInfo(info GitInfo) string {
 			statusStr += fmt.Sprintf("%s~%d%s", ColorOrange, info.DirtyCount, ColorReset)
 		}
 		result += fmt.Sprintf(" [%s]", statusStr)
+	}
+
+	return result
+}
+
+// 格式化 Git 資訊（緊湊版：branch + status indicators）
+func formatGitInfoCompact(info GitInfo) string {
+	if info.Branch == "" {
+		return ""
+	}
+
+	// Branch 名稱
+	result := fmt.Sprintf("%s⚡ %s%s", ColorCyan, info.Branch, ColorReset)
+
+	// Git 狀態指示器
+	var indicators []string
+	if info.StagedCount > 0 {
+		indicators = append(indicators, fmt.Sprintf("%s+%d%s", ColorGreen, info.StagedCount, ColorReset))
+	}
+	if info.DirtyCount > 0 {
+		indicators = append(indicators, fmt.Sprintf("%s~%d%s", ColorOrange, info.DirtyCount, ColorReset))
+	}
+
+	if len(indicators) > 0 {
+		result += "  " + strings.Join(indicators, " ")
 	}
 
 	return result
@@ -865,6 +964,20 @@ func formatCostFixed(cost float64) string {
 	return fmt.Sprintf("$%5.3f", cost)
 }
 
+// 格式化成本（短版 5 字元）
+func formatCostShort(cost float64) string {
+	if cost >= 1000 {
+		return fmt.Sprintf("$%.0f", cost)
+	} else if cost >= 100 {
+		return fmt.Sprintf("$%.0f", cost)
+	} else if cost >= 10 {
+		return fmt.Sprintf("$%.1f", cost)
+	} else if cost >= 1.0 {
+		return fmt.Sprintf("$%.2f", cost)
+	}
+	return fmt.Sprintf("$%.2f", cost)
+}
+
 // 獲取每日統計
 func getDailyStats() UsageStats {
 	homeDir, _ := os.UserHomeDir()
@@ -1051,6 +1164,27 @@ func formatCacheHitRate(usage SessionUsageResult) string {
 	}
 
 	return fmt.Sprintf("%s%3.0f%% cache%s", color, hitRate, ColorReset)
+}
+
+// 格式化 Cache 命中率（短版）
+func formatCacheHitRateShort(usage SessionUsageResult) string {
+	totalInput := usage.InputTokens + usage.CacheReadTokens
+	if totalInput == 0 {
+		return fmt.Sprintf("%s--%%🗄️%s", ColorDim, ColorReset)
+	}
+
+	hitRate := float64(usage.CacheReadTokens) * 100.0 / float64(totalInput)
+
+	var color string
+	if hitRate >= 70 {
+		color = ColorGreen
+	} else if hitRate >= 40 {
+		color = ColorYellow
+	} else {
+		color = ColorOrange
+	}
+
+	return fmt.Sprintf("%s%.0f%%🗄️%s", color, hitRate, ColorReset)
 }
 
 // 分析 Context 使用量（固定寬度）
