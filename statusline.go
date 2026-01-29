@@ -172,7 +172,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	// 並行獲取各種資訊
-	wg.Add(7)
+	wg.Add(6)
 
 	go func() {
 		defer wg.Done()
@@ -184,12 +184,6 @@ func main() {
 		defer wg.Done()
 		totalHours := calculateTotalHours(input.SessionID)
 		results <- Result{"hours", totalHours}
-	}()
-
-	go func() {
-		defer wg.Done()
-		contextInfo := analyzeContext(input.TranscriptPath)
-		results <- Result{"context", contextInfo}
 	}()
 
 	go func() {
@@ -226,7 +220,6 @@ func main() {
 	var (
 		gitInfo      GitInfo
 		totalHours   string
-		contextUsage string
 		sessionUsage SessionUsageResult
 		dailyStats   UsageStats
 		weeklyStats  UsageStats
@@ -239,8 +232,6 @@ func main() {
 			gitInfo = result.Data.(GitInfo)
 		case "hours":
 			totalHours = result.Data.(string)
-		case "context":
-			contextUsage = result.Data.(string)
 		case "session_usage":
 			sessionUsage = result.Data.(SessionUsageResult)
 		case "weekly":
@@ -258,29 +249,42 @@ func main() {
 
 	// 格式化輸出
 	modelDisplay := formatModel(input.Model.DisplayName)
-	projectName := filepath.Base(input.Workspace.CurrentDir)
+	projectPath := formatProjectPath(input.Workspace.CurrentDir)
 	gitDisplay := formatGitInfo(gitInfo)
 
-	// 第一行：模型 + 專案 + Git（可變長度資訊）
+	// 第一行：模型 + 路徑 + Git（可變長度資訊）
 	fmt.Printf("%s[%s] %s%s%s\n",
-		ColorReset, modelDisplay, projectName, gitDisplay, ColorReset)
+		ColorReset, modelDisplay, projectPath, gitDisplay, ColorReset)
 
-	// 第二行：API 限制（固定寬度表格）
-	apiUsageInfo := formatAPIUsage(apiUsage)
-	fmt.Printf("%s│ %s%s\n", ColorDim, apiUsageInfo, ColorReset)
+	// 使用 padRight 函數確保視覺寬度一致
+	// 欄位寬度：Label=10, Col1=32, Col2=32
 
-	// 第三行：成本 + 統計（固定寬度表格）
-	sessionCostStr := formatCostFixed(sessionUsage.Cost)
-	costInfo := formatCostStats(dailyStats, weeklyStats)
+	// 第二行：API 限制
+	api5hr := formatAPILimit(apiUsage, "5hr")
+	api7day := formatAPILimit(apiUsage, "7day")
+	fmt.Printf("%s│ %-10s│ %s │ %s │%s\n",
+		ColorDim, "API Limit", padRight(api5hr, 32), padRight(api7day, 32), ColorReset)
+
+	// 第三行：成本
+	sessCost := fmt.Sprintf("%s%s%s sess", ColorGreen, formatCostFixed(sessionUsage.Cost), ColorReset)
+	dayCost := fmt.Sprintf("%s%s%s/day", ColorGold, formatCostFixed(dailyStats.TotalCost), ColorReset)
+	wkCost := fmt.Sprintf("%s%s%s/wk", ColorBlue, formatCostFixed(weeklyStats.TotalCost), ColorReset)
 	burnRate := calculateBurnRate(dailyStats)
-	sessionInfo := formatSessionUsage(sessionUsage)
-	cacheHitRate := formatCacheHitRate(sessionUsage)
-	fmt.Printf("%s│ %s%s%s %s %s │ %s %s │%s │ %s%s\n",
-		ColorDim,
-		ColorGreen, sessionCostStr, ColorReset,
-		costInfo, burnRate,
-		sessionInfo, cacheHitRate,
-		contextUsage, totalHours, ColorReset)
+	costCol1 := sessCost + "  " + dayCost
+	costCol2 := wkCost + "  " + burnRate
+	fmt.Printf("%s│ %-10s│ %s │ %s │%s\n",
+		ColorDim, "Cost", padRight(costCol1, 32), padRight(costCol2, 32), ColorReset)
+
+	// 第四行：統計
+	totalTokens := sessionUsage.InputTokens + sessionUsage.OutputTokens + sessionUsage.CacheReadTokens + sessionUsage.CacheWriteTokens
+	tokenStr := fmt.Sprintf("%s%s%s tok", ColorPurple, formatTokenCountFixed(totalTokens), ColorReset)
+	msgStr := fmt.Sprintf("%s%4d%s msg", ColorCyan, sessionUsage.MessageCount, ColorReset)
+	cacheStr := formatCacheHitRate(sessionUsage)
+	ctxStr := formatContextShort(input.TranscriptPath)
+	statsCol1 := tokenStr + "  " + msgStr
+	statsCol2 := cacheStr + "  " + ctxStr
+	fmt.Printf("%s│ %-10s│ %s │ %s │ %s%s\n",
+		ColorDim, "Stats", padRight(statsCol1, 32), padRight(statsCol2, 32), totalHours, ColorReset)
 }
 
 // 獲取 OAuth Token (支援 Linux 和 macOS)
@@ -370,29 +374,57 @@ func fetchAPIUsage() *APIUsage {
 	return &usage
 }
 
-// 格式化 API Usage
-func formatAPIUsage(usage *APIUsage) string {
+// 格式化專案路徑（相對於 HOME）
+func formatProjectPath(fullPath string) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Base(fullPath)
+	}
+	if strings.HasPrefix(fullPath, homeDir) {
+		return "~" + fullPath[len(homeDir):]
+	}
+	return fullPath
+}
+
+// 格式化單個 API 限制
+func formatAPILimit(usage *APIUsage, limitType string) string {
 	if usage == nil {
-		return fmt.Sprintf("%sAPI   %-35s│  %-35s%s", ColorDim, "-- unavailable --", "-- unavailable --", ColorReset)
+		return fmt.Sprintf("%s %-10s -- unavailable --", limitType, "")
 	}
 
-	// Session (5-hour) 用量
-	sessionPct := int(usage.FiveHour.Utilization)
-	sessionBar := generateUsageBar(sessionPct, 10)
-	sessionLeft := formatTimeLeft(usage.FiveHour.ResetsAt)
-	sessionColor := getUsageColor(sessionPct)
+	var pct int
+	var resetTime string
+	if limitType == "5hr" {
+		pct = int(usage.FiveHour.Utilization)
+		resetTime = usage.FiveHour.ResetsAt
+	} else {
+		pct = int(usage.SevenDay.Utilization)
+		resetTime = usage.SevenDay.ResetsAt
+	}
 
-	// Weekly (7-day) 用量
-	weeklyPct := int(usage.SevenDay.Utilization)
-	weeklyBar := generateUsageBar(weeklyPct, 10)
-	weeklyLeft := formatTimeLeft(usage.SevenDay.ResetsAt)
-	weeklyColor := getUsageColor(weeklyPct)
+	bar := generateUsageBar(pct, 10)
+	left := formatTimeLeft(resetTime)
+	color := getUsageColor(pct)
 
-	// 固定寬度格式
-	sessionInfo := fmt.Sprintf("5hr %s %s%3d%%%s  %s", sessionBar, sessionColor, sessionPct, ColorReset, sessionLeft)
-	weeklyInfo := fmt.Sprintf("7day %s %s%3d%%%s  %s", weeklyBar, weeklyColor, weeklyPct, ColorReset, weeklyLeft)
+	return fmt.Sprintf("%s %s %s%3d%%%s %s", limitType, bar, color, pct, ColorReset, left)
+}
 
-	return fmt.Sprintf("API   %s  │  %s", sessionInfo, weeklyInfo)
+// 格式化 Context（簡短版）
+func formatContextShort(transcriptPath string) string {
+	var contextLength int
+	if transcriptPath != "" {
+		contextLength = calculateContextUsage(transcriptPath)
+	}
+
+	percentage := int(float64(contextLength) * 100.0 / 200000.0)
+	if percentage > 100 {
+		percentage = 100
+	}
+
+	color := getContextColor(percentage)
+	num := formatNumberFixed(contextLength)
+
+	return fmt.Sprintf("Ctx %s%3d%%%s %s", color, percentage, ColorReset, num)
 }
 
 // 生成用量進度條
@@ -1175,4 +1207,32 @@ func formatNumberFixed(num int) string {
 		return fmt.Sprintf("%3dk", num/1000)
 	}
 	return fmt.Sprintf("%4d", num)
+}
+
+// 計算字串的可見寬度（排除 ANSI 碼）
+func visibleWidth(s string) int {
+	// 移除 ANSI escape codes
+	clean := s
+	for {
+		start := strings.Index(clean, "\033[")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(clean[start:], "m")
+		if end == -1 {
+			break
+		}
+		clean = clean[:start] + clean[start+end+1:]
+	}
+	// 計算 rune 數量（處理 emoji 等）
+	return len([]rune(clean))
+}
+
+// 右填充至指定可見寬度
+func padRight(s string, width int) string {
+	visible := visibleWidth(s)
+	if visible >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-visible)
 }
