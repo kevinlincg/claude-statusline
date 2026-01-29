@@ -99,16 +99,17 @@ type Interval struct {
 
 // Usage 統計結構
 type UsageStats struct {
-	InputTokens      int64   `json:"input_tokens"`
-	OutputTokens     int64   `json:"output_tokens"`
-	CacheReadTokens  int64   `json:"cache_read_tokens"`
-	CacheWriteTokens int64   `json:"cache_write_tokens"`
-	TotalCost        float64 `json:"total_cost"`
-	MessageCount     int     `json:"message_count"`
-	SessionCount     int     `json:"session_count"`
-	Date             string  `json:"date"`
-	Week             string  `json:"week"`
-	LastUpdated      int64   `json:"last_updated"`
+	InputTokens      int64              `json:"input_tokens"`
+	OutputTokens     int64              `json:"output_tokens"`
+	CacheReadTokens  int64              `json:"cache_read_tokens"`
+	CacheWriteTokens int64              `json:"cache_write_tokens"`
+	TotalCost        float64            `json:"total_cost"`
+	MessageCount     int                `json:"message_count"`
+	SessionCount     int                `json:"session_count"`
+	Date             string             `json:"date"`
+	Week             string             `json:"week"`
+	LastUpdated      int64              `json:"last_updated"`
+	SessionCosts     map[string]float64 `json:"session_costs,omitempty"` // 追蹤每個 session 的已記錄成本
 }
 
 // API Usage 結構
@@ -253,7 +254,7 @@ func main() {
 
 	// 更新 session 和統計
 	updateSession(input.SessionID)
-	updateDailyStats(sessionUsage, modelType)
+	updateDailyStats(input.SessionID, sessionUsage, modelType)
 
 	// 格式化輸出
 	modelDisplay := formatModel(input.Model.DisplayName)
@@ -856,7 +857,7 @@ func getWeeklyStats() UsageStats {
 }
 
 // 更新每日統計
-func updateDailyStats(sessionUsage SessionUsageResult, modelType string) {
+func updateDailyStats(sessionID string, sessionUsage SessionUsageResult, modelType string) {
 	homeDir, _ := os.UserHomeDir()
 	statsDir := filepath.Join(homeDir, ".claude", "session-tracker", "stats")
 	os.MkdirAll(statsDir, 0755)
@@ -870,9 +871,20 @@ func updateDailyStats(sessionUsage SessionUsageResult, modelType string) {
 		json.Unmarshal(data, &dailyStats)
 	}
 
-	// 更新統計
+	// 初始化 SessionCosts map
+	if dailyStats.SessionCosts == nil {
+		dailyStats.SessionCosts = make(map[string]float64)
+	}
+
+	// 計算差額：只加上新增的成本
+	lastKnownCost := dailyStats.SessionCosts[sessionID]
+	delta := sessionUsage.Cost - lastKnownCost
+	if delta > 0 {
+		dailyStats.TotalCost += delta
+		dailyStats.SessionCosts[sessionID] = sessionUsage.Cost
+	}
+
 	dailyStats.Date = today
-	dailyStats.TotalCost += sessionUsage.Cost * 0.01
 	dailyStats.LastUpdated = time.Now().Unix()
 
 	// 儲存
@@ -881,11 +893,11 @@ func updateDailyStats(sessionUsage SessionUsageResult, modelType string) {
 	}
 
 	// 同時更新每週統計
-	updateWeeklyStats(sessionUsage, modelType)
+	updateWeeklyStats(sessionID, sessionUsage, modelType)
 }
 
 // 更新每週統計
-func updateWeeklyStats(sessionUsage SessionUsageResult, modelType string) {
+func updateWeeklyStats(sessionID string, sessionUsage SessionUsageResult, modelType string) {
 	homeDir, _ := os.UserHomeDir()
 	statsDir := filepath.Join(homeDir, ".claude", "session-tracker", "stats")
 
@@ -903,8 +915,20 @@ func updateWeeklyStats(sessionUsage SessionUsageResult, modelType string) {
 		json.Unmarshal(data, &weeklyStats)
 	}
 
+	// 初始化 SessionCosts map
+	if weeklyStats.SessionCosts == nil {
+		weeklyStats.SessionCosts = make(map[string]float64)
+	}
+
+	// 計算差額：只加上新增的成本
+	lastKnownCost := weeklyStats.SessionCosts[sessionID]
+	delta := sessionUsage.Cost - lastKnownCost
+	if delta > 0 {
+		weeklyStats.TotalCost += delta
+		weeklyStats.SessionCosts[sessionID] = sessionUsage.Cost
+	}
+
 	weeklyStats.Week = weekStart
-	weeklyStats.TotalCost += sessionUsage.Cost * 0.01
 	weeklyStats.LastUpdated = time.Now().Unix()
 
 	if data, err := json.Marshal(weeklyStats); err == nil {
