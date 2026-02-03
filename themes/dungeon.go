@@ -3,6 +3,7 @@ package themes
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // DungeonTheme 地牢火把風格
@@ -38,18 +39,14 @@ const (
 func (t *DungeonTheme) Render(data StatusData) string {
 	var sb strings.Builder
 
-	// Fixed width: 80 characters
-	width := 80
+	// Fixed width: 78 characters
+	width := 78
 
-	// Stone wall top with torches (pure ASCII)
-	// ###(*)###...###(*)###
-	torchDecor := DunDarkStone + "###" + DunTorch + "(" + DunFlame + "*" + DunTorch + ")" + DunDarkStone + "###" + Reset
-	torchLen := 9 // ###(*)###
-	middleLen := width - torchLen*2
-	sb.WriteString(torchDecor + DunDarkStone + strings.Repeat("#", middleLen) + Reset + torchDecor + "\n")
+	// Stone wall top with torches
+	sb.WriteString(DunDarkStone + "▓▓▓" + DunTorch + "╔" + DunFlame + "҈" + DunTorch + "╗" + DunDarkStone + strings.Repeat("▓", width-12) + DunTorch + "╔" + DunFlame + "҈" + DunTorch + "╗" + DunDarkStone + "▓▓▓" + Reset + "\n")
 
 	// Chamber name
-	modelColor, _ := GetModelConfig(data.ModelType)
+	modelColor, modelIcon := GetModelConfig(data.ModelType)
 	chamberName := "The Dark Chamber"
 	if data.ModelType == "Opus" {
 		chamberName = "The Arcane Sanctum"
@@ -59,20 +56,21 @@ func (t *DungeonTheme) Render(data StatusData) string {
 
 	update := ""
 	if data.UpdateAvailable {
-		update = DunGold + " *" + Reset
+		update = DunGold + " ★" + Reset
 	}
 
-	line1 := fmt.Sprintf("%s#%s %s%s%s  %s~ %s ~%s%s  %s%s",
+	line1 := fmt.Sprintf("%s▓%s%s║%s %s%s%s%s  %s~ %s ~%s%s  %s%s",
 		DunDarkStone, Reset,
-		modelColor, data.ModelName, Reset,
+		DunTorch, Reset,
+		modelColor, modelIcon, data.ModelName, Reset,
 		DunTorch, chamberName, Reset, update,
 		DunStone, data.Version)
-	sb.WriteString(dunPadLine(line1, width, DunDarkStone+"#"+Reset))
+	sb.WriteString(dunPadLine(line1, width, DunTorch+"║"+DunDarkStone+"▓"+Reset))
 
 	// Quest scroll
 	gitStr := ""
 	if data.GitBranch != "" {
-		gitStr = fmt.Sprintf("  %s<%s>%s", DunMoss, data.GitBranch, Reset)
+		gitStr = fmt.Sprintf("  %s⚔%s%s", DunMoss, data.GitBranch, Reset)
 		if data.GitStaged > 0 {
 			gitStr += fmt.Sprintf(" %s+%d%s", DunGreen, data.GitStaged, Reset)
 		}
@@ -81,23 +79,25 @@ func (t *DungeonTheme) Render(data StatusData) string {
 		}
 	}
 
-	line2 := fmt.Sprintf("%s#%s %sScroll:%s %s%s",
+	line2 := fmt.Sprintf("%s▓%s%s║%s %s📜 %s%s%s",
 		DunDarkStone, Reset,
-		DunBone, Reset, ShortenPath(data.ProjectPath, 30), gitStr)
-	sb.WriteString(dunPadLine(line2, width, DunDarkStone+"#"+Reset))
+		DunTorch, Reset,
+		DunBone, ShortenPath(data.ProjectPath, 30), Reset, gitStr)
+	sb.WriteString(dunPadLine(line2, width, DunTorch+"║"+DunDarkStone+"▓"+Reset))
 
 	// Stone separator
-	sb.WriteString(DunDarkStone + "#" + DunStone + strings.Repeat("=", width-2) + DunDarkStone + "#" + Reset + "\n")
+	sb.WriteString(DunDarkStone + "▓" + DunTorch + "╠" + DunStone + strings.Repeat("═", width-4) + DunTorch + "╣" + DunDarkStone + "▓" + Reset + "\n")
 
 	// Stats as dungeon items
-	line3 := fmt.Sprintf("%s#%s %sSwd%s %-6s %sShd%s %-3d %sTime%s %-6s %sSkul%s %-6s %sGem%s %s",
+	line3 := fmt.Sprintf("%s▓%s%s║%s %s🗡%s %s  %s🛡%s %d  %s⏳%s %s  %s💀%s %s  %s💎%s %s",
 		DunDarkStone, Reset,
+		DunTorch, Reset,
 		DunRed, Reset, FormatTokens(data.TokenCount),
 		DunBlue, Reset, data.MessageCount,
 		DunStone, Reset, data.SessionTime,
 		DunPurple, Reset, FormatCostShort(data.BurnRate),
 		DunGold, Reset, FormatCostShort(data.DayCost))
-	sb.WriteString(dunPadLine(line3, width, DunDarkStone+"#"+Reset))
+	sb.WriteString(dunPadLine(line3, width, DunTorch+"║"+DunDarkStone+"▓"+Reset))
 
 	// Health/Mana pools
 	hp := 100 - data.ContextPercent
@@ -108,34 +108,37 @@ func (t *DungeonTheme) Render(data StatusData) string {
 		hpColor = DunTorch
 	}
 
-	hpBar := t.generateDungeonBar(hp, 10, hpColor)
-	mpBar := t.generateDungeonBar(100-data.API5hrPercent, 8, DunBlue)
-	xpBar := t.generateDungeonBar(100-data.API7dayPercent, 8, DunPurple)
+	hpBar := t.generateDungeonBar(hp, 15, hpColor)
+	mpBar := t.generateDungeonBar(100-data.API5hrPercent, 12, DunBlue)
+	xpBar := t.generateDungeonBar(100-data.API7dayPercent, 12, DunPurple)
 
-	line4 := fmt.Sprintf("%s#%s %sHP%s%s%s%3d%s %sMP%s%s%s%3d%s %sXP%s%s%s%3d%s",
+	line4 := fmt.Sprintf("%s▓%s%s║%s %s❤%s%s%s%d%s  %s✦%s%s%s%d%s  %s⚡%s%s%s%d%s",
 		DunDarkStone, Reset,
+		DunTorch, Reset,
 		DunRed, Reset, hpBar, hpColor, hp, Reset,
 		DunBlue, Reset, mpBar, DunBlue, 100-data.API5hrPercent, Reset,
 		DunPurple, Reset, xpBar, DunPurple, 100-data.API7dayPercent, Reset)
-	sb.WriteString(dunPadLine(line4, width, DunDarkStone+"#"+Reset))
+	sb.WriteString(dunPadLine(line4, width, DunTorch+"║"+DunDarkStone+"▓"+Reset))
 
 	// Treasure info
-	line5 := fmt.Sprintf("%s#%s %sGold%s %s ses  %sPotn%s %d%% hit  %sLeft%s %s / %s",
+	line5 := fmt.Sprintf("%s▓%s%s║%s %s💰%s %s ses  %s⚗%s %d%% hit  %s⌛%s %s  %s⌛%s %s",
 		DunDarkStone, Reset,
+		DunTorch, Reset,
 		DunGold, Reset, FormatCostShort(data.SessionCost),
 		DunGreen, Reset, data.CacheHitRate,
-		DunStone, Reset, data.API5hrTimeLeft, data.API7dayTimeLeft)
-	sb.WriteString(dunPadLine(line5, width, DunDarkStone+"#"+Reset))
+		DunStone, Reset, data.API5hrTimeLeft,
+		DunStone, Reset, data.API7dayTimeLeft)
+	sb.WriteString(dunPadLine(line5, width, DunTorch+"║"+DunDarkStone+"▓"+Reset))
 
 	// Stone wall bottom with torches
-	sb.WriteString(torchDecor + DunDarkStone + strings.Repeat("#", middleLen) + Reset + torchDecor + "\n")
+	sb.WriteString(DunDarkStone + "▓▓▓" + DunTorch + "╚" + DunFlame + "҈" + DunTorch + "╝" + DunDarkStone + strings.Repeat("▓", width-12) + DunTorch + "╚" + DunFlame + "҈" + DunTorch + "╝" + DunDarkStone + "▓▓▓" + Reset + "\n")
 
 	return sb.String()
 }
 
 func dunPadLine(line string, targetWidth int, suffix string) string {
-	visible := dunVisibleLen(line)
-	suffixLen := dunVisibleLen(suffix)
+	visible := dunDisplayWidth(line)
+	suffixLen := dunDisplayWidth(suffix)
 	padding := targetWidth - visible - suffixLen
 	if padding < 0 {
 		padding = 0
@@ -143,9 +146,13 @@ func dunPadLine(line string, targetWidth int, suffix string) string {
 	return line + strings.Repeat(" ", padding) + suffix + "\n"
 }
 
-func dunVisibleLen(s string) int {
+// dunDisplayWidth calculates display width accounting for:
+// - ANSI escape codes (0 width)
+// - Emojis and wide characters (2 width)
+// - Regular ASCII (1 width)
+func dunDisplayWidth(s string) int {
 	inEscape := false
-	count := 0
+	width := 0
 	for _, r := range s {
 		if r == '\033' {
 			inEscape = true
@@ -154,10 +161,51 @@ func dunVisibleLen(s string) int {
 				inEscape = false
 			}
 		} else {
-			count++
+			// Check if it's an emoji or wide character
+			if isWideChar(r) {
+				width += 2
+			} else {
+				width += 1
+			}
 		}
 	}
-	return count
+	return width
+}
+
+// isWideChar checks if a rune is a wide character (emoji or CJK)
+func isWideChar(r rune) bool {
+	// Emojis and symbols that are typically 2 cells wide
+	if r >= 0x1F300 && r <= 0x1F9FF { // Misc Symbols, Emoticons, etc.
+		return true
+	}
+	if r >= 0x2600 && r <= 0x26FF { // Misc Symbols (⚔, ⚗, ⌛, etc.)
+		return true
+	}
+	if r >= 0x2700 && r <= 0x27BF { // Dingbats
+		return true
+	}
+	if r >= 0x25A0 && r <= 0x25FF { // Geometric shapes (▓, ▰, ▱)
+		return true
+	}
+	if r >= 0x2500 && r <= 0x257F { // Box Drawing (║, ═, ╔, ╗, etc.) - actually 1 width
+		return false
+	}
+	// CJK characters
+	if unicode.Is(unicode.Han, r) {
+		return true
+	}
+	// Full-width characters
+	if r >= 0xFF00 && r <= 0xFFEF {
+		return true
+	}
+	// Special dungeon characters
+	switch r {
+	case '▓', '▰', '▱', '҈':
+		return false // These are 1 cell in most terminals
+	case '★', '❤', '✦', '⚡', '💰', '💎', '💀', '🗡', '🛡', '⏳', '⚗', '⌛', '⚔', '📜':
+		return true // Emojis are 2 cells
+	}
+	return false
 }
 
 func (t *DungeonTheme) generateDungeonBar(percent, width int, color string) string {
@@ -171,17 +219,17 @@ func (t *DungeonTheme) generateDungeonBar(percent, width int, color string) stri
 	empty := width - filled
 
 	var bar strings.Builder
-	bar.WriteString(DunShadow + "[" + Reset)
+	bar.WriteString(DunShadow + "〔" + Reset)
 	if filled > 0 {
 		bar.WriteString(color)
-		bar.WriteString(strings.Repeat("#", filled))
+		bar.WriteString(strings.Repeat("▰", filled))
 		bar.WriteString(Reset)
 	}
 	if empty > 0 {
 		bar.WriteString(DunShadow)
-		bar.WriteString(strings.Repeat("-", empty))
+		bar.WriteString(strings.Repeat("▱", empty))
 		bar.WriteString(Reset)
 	}
-	bar.WriteString(DunShadow + "]" + Reset)
+	bar.WriteString(DunShadow + "〕" + Reset)
 	return bar.String()
 }
