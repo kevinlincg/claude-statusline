@@ -36,46 +36,44 @@ const (
 
 func (t *SteampunkTheme) Render(data StatusData) string {
 	var sb strings.Builder
+	width := 80
 
 	// Top border with gear decoration
-	sb.WriteString(SteamDark + "╔" + SteamBrass + "⚙" + SteamDark + "═══════════════════════════════════════════════════════════════════════════════" + SteamBrass + "⚙" + SteamDark + "╗" + Reset)
-	sb.WriteString("\n")
+	sb.WriteString(SteamDark + "+" + SteamBrass + "*" + SteamDark + strings.Repeat("=", width-4) + SteamBrass + "*" + SteamDark + "+" + Reset + "\n")
 
 	// Model + Version + Path
-	modelColor, modelIcon := GetModelConfig(data.ModelType)
+	modelColor, _ := GetModelConfig(data.ModelType)
 	update := ""
 	if data.UpdateAvailable {
-		update = fmt.Sprintf(" %s⚡%s", SteamGold, Reset)
+		update = SteamGold + " !" + Reset
 	}
 
-	line1 := fmt.Sprintf("%s║%s %s⚙%s %s%s%s%s%s %s%s%s%s  %s│%s  %s⚙%s %s%s%s",
+	gitStr := ""
+	if data.GitBranch != "" {
+		gitStr = fmt.Sprintf("  %s<%s>%s", SteamBronze, data.GitBranch, Reset)
+		if data.GitStaged > 0 {
+			gitStr += fmt.Sprintf(" %s+%d%s", SteamGreen, data.GitStaged, Reset)
+		}
+		if data.GitDirty > 0 {
+			gitStr += fmt.Sprintf(" %s~%d%s", SteamRust, data.GitDirty, Reset)
+		}
+	}
+
+	line1 := fmt.Sprintf("%s|%s %s*%s %s%s%s %s%s%s%s  %s|%s  %s*%s %s%s%s%s",
 		SteamDark, Reset,
 		SteamBrass, Reset,
-		modelColor, Bold, modelIcon, data.ModelName, Reset,
+		modelColor, data.ModelName, Reset,
 		SteamGear, data.Version, Reset, update,
 		SteamDark, Reset,
 		SteamCopper, Reset,
-		SteamIvory, ShortenPath(data.ProjectPath, 20), Reset)
-	if data.GitBranch != "" {
-		line1 += fmt.Sprintf("  %s◈%s%s", SteamBronze, data.GitBranch, Reset)
-		if data.GitStaged > 0 {
-			line1 += fmt.Sprintf(" %s+%d%s", SteamGreen, data.GitStaged, Reset)
-		}
-		if data.GitDirty > 0 {
-			line1 += fmt.Sprintf(" %s~%d%s", SteamRust, data.GitDirty, Reset)
-		}
-	}
-	// Pad and close
-	sb.WriteString(PadRight(line1, 85))
-	sb.WriteString(SteamDark + "║" + Reset)
-	sb.WriteString("\n")
+		SteamIvory, ShortenPath(data.ProjectPath, 25), Reset, gitStr)
+	sb.WriteString(spPadLine(line1, width, SteamDark+"|"+Reset))
 
 	// Separator with pipes
-	sb.WriteString(SteamDark + "╠" + SteamGear + "═══════════════════════════════════" + SteamBrass + "◈" + SteamGear + "═══════════════════════════════════════════" + SteamDark + "╣" + Reset)
-	sb.WriteString("\n")
+	sb.WriteString(SteamDark + "+" + SteamGear + strings.Repeat("-", (width-4)/2) + SteamBrass + "<>" + SteamGear + strings.Repeat("-", (width-4)/2) + SteamDark + "+" + Reset + "\n")
 
 	// Stats with gauge style
-	line2 := fmt.Sprintf("%s║%s %s⊚%s%s tok  %s⊛%s%d msg  %s⊙%s%s  %s│%s  %s%s%s  %s%s%s  %s%s/h%s  %s%d%%hit%s",
+	line2 := fmt.Sprintf("%s|%s %s@%s%-6s  %s#%s%-3d  %s~%s%-6s  %s|%s  %s%s%s  %s%s%s  %s%s/h%s  %s%d%%hit%s",
 		SteamDark, Reset,
 		SteamGear, SteamBrass, FormatTokens(data.TokenCount),
 		SteamGear, SteamCopper, data.MessageCount,
@@ -85,12 +83,10 @@ func (t *SteampunkTheme) Render(data StatusData) string {
 		SteamGold, FormatCostShort(data.DayCost), Reset,
 		SteamRed, FormatCostShort(data.BurnRate), Reset,
 		SteamGreen, data.CacheHitRate, Reset)
-	sb.WriteString(PadRight(line2, 85))
-	sb.WriteString(SteamDark + "║" + Reset)
-	sb.WriteString("\n")
+	sb.WriteString(spPadLine(line2, width, SteamDark+"|"+Reset))
 
 	// Pressure gauges (progress bars)
-	ctxBar := t.generateGaugeBar(data.ContextPercent, 14)
+	ctxBar := t.generateGaugeBar(data.ContextPercent, 12)
 	bar5 := t.generateGaugeBar(data.API5hrPercent, 10)
 	bar7 := t.generateGaugeBar(data.API7dayPercent, 10)
 
@@ -101,22 +97,46 @@ func (t *SteampunkTheme) Render(data StatusData) string {
 		ctxColor = SteamGold
 	}
 
-	line3 := fmt.Sprintf("%s║%s %sCTX%s%s%s%3d%%%s  %s5HR%s%s%s%3d%%%s %s%s%s  %s7DY%s%s%s%3d%%%s %s%s%s",
+	line3 := fmt.Sprintf("%s|%s %sCTX%s%s%s%3d%%%s  %s5HR%s%s%s%3d%%%s %s%-5s%s  %s7DY%s%s%s%3d%%%s %s%-5s%s",
 		SteamDark, Reset,
 		SteamGear, Reset, ctxBar, ctxColor, data.ContextPercent, Reset,
 		SteamGear, Reset, bar5, SteamBrass, data.API5hrPercent, Reset,
 		SteamGear, data.API5hrTimeLeft, Reset,
 		SteamGear, Reset, bar7, SteamCopper, data.API7dayPercent, Reset,
 		SteamGear, data.API7dayTimeLeft, Reset)
-	sb.WriteString(PadRight(line3, 85))
-	sb.WriteString(SteamDark + "║" + Reset)
-	sb.WriteString("\n")
+	sb.WriteString(spPadLine(line3, width, SteamDark+"|"+Reset))
 
 	// Bottom border with gear decoration
-	sb.WriteString(SteamDark + "╚" + SteamBrass + "⚙" + SteamDark + "═══════════════════════════════════════════════════════════════════════════════" + SteamBrass + "⚙" + SteamDark + "╝" + Reset)
-	sb.WriteString("\n")
+	sb.WriteString(SteamDark + "+" + SteamBrass + "*" + SteamDark + strings.Repeat("=", width-4) + SteamBrass + "*" + SteamDark + "+" + Reset + "\n")
 
 	return sb.String()
+}
+
+func spPadLine(line string, targetWidth int, suffix string) string {
+	visible := spVisibleLen(line)
+	suffixLen := spVisibleLen(suffix)
+	padding := targetWidth - visible - suffixLen
+	if padding < 0 {
+		padding = 0
+	}
+	return line + strings.Repeat(" ", padding) + suffix + "\n"
+}
+
+func spVisibleLen(s string) int {
+	inEscape := false
+	count := 0
+	for _, r := range s {
+		if r == '\033' {
+			inEscape = true
+		} else if inEscape {
+			if r == 'm' {
+				inEscape = false
+			}
+		} else {
+			count++
+		}
+	}
+	return count
 }
 
 func (t *SteampunkTheme) generateGaugeBar(percent, width int) string {
@@ -127,20 +147,20 @@ func (t *SteampunkTheme) generateGaugeBar(percent, width int) string {
 	empty := width - filled
 
 	var bar strings.Builder
-	bar.WriteString(SteamDark + "〔" + Reset)
+	bar.WriteString(SteamDark + "[" + Reset)
 
 	// Pressure gauge style
 	if filled > 0 {
 		bar.WriteString(SteamBgBrass)
 		bar.WriteString(SteamBrass)
-		bar.WriteString(strings.Repeat("▰", filled))
+		bar.WriteString(strings.Repeat("=", filled))
 		bar.WriteString(Reset)
 	}
 	if empty > 0 {
 		bar.WriteString(SteamDark)
-		bar.WriteString(strings.Repeat("▱", empty))
+		bar.WriteString(strings.Repeat("-", empty))
 		bar.WriteString(Reset)
 	}
-	bar.WriteString(SteamDark + "〕" + Reset)
+	bar.WriteString(SteamDark + "]" + Reset)
 	return bar.String()
 }

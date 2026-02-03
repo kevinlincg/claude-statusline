@@ -36,65 +36,64 @@ const (
 
 func (t *NetHackTheme) Render(data StatusData) string {
 	var sb strings.Builder
+	width := 80
 
 	// Dungeon map style header with walls
-	sb.WriteString(NHDark + "─────┬─────────────────────────────────────────────────────────────────────┬─────" + Reset + "\n")
+	sb.WriteString(NHDark + "-----+" + strings.Repeat("-", width-12) + "+-----" + Reset + "\n")
 
 	// Player @ symbol with class
 	modelColor, _ := GetModelConfig(data.ModelType)
-	playerClass := "@"
 	className := "Tourist"
 	if data.ModelType == "Opus" {
-		playerClass = "@"
 		className = "Wizard"
 	} else if data.ModelType == "Haiku" {
-		playerClass = "@"
 		className = "Monk"
 	}
 
 	// Status line 1: Character info (NetHack style)
-	line1 := fmt.Sprintf("%s│%s %s%s%s%s %sthe %s%s %s%s%s",
-		NHDark, Reset,
-		modelColor, Bold, playerClass, Reset,
-		NHWhite, className, Reset,
-		NHGray, data.Version, Reset)
+	update := ""
 	if data.UpdateAvailable {
-		line1 += NHYellow + " (Dlvl↑)" + Reset
+		update = NHYellow + " (Dlvl^)" + Reset
 	}
-	line1 += fmt.Sprintf("  %sSt:%s18  %sDx:%s%d  %sCo:%s%d",
-		NHWhite, NHGreen,
-		NHWhite, NHCyan, data.MessageCount,
-		NHWhite, NHYellow, data.CacheHitRate)
-	sb.WriteString(PadRight(line1, 77))
-	sb.WriteString(NHDark + "│" + Reset + "\n")
+
+	line1 := fmt.Sprintf("%s|%s %s%s@%s %sthe %s%s %s%s%s%s  St:%s18%s Dx:%s%d%s Co:%s%d%s",
+		NHDark, Reset,
+		modelColor, Bold, Reset,
+		NHWhite, className, Reset,
+		NHGray, data.Version, Reset, update,
+		NHGreen, Reset,
+		NHCyan, data.MessageCount, Reset,
+		NHYellow, data.CacheHitRate, Reset)
+	sb.WriteString(nhPadLine(line1, width, NHDark+"|"+Reset))
 
 	// Dungeon level (project path)
-	line2 := fmt.Sprintf("%s│%s %sDlvl:%s%s%s",
-		NHDark, Reset,
-		NHWhite, NHBrown, ShortenPath(data.ProjectPath, 25), Reset)
+	gitStr := ""
 	if data.GitBranch != "" {
-		line2 += fmt.Sprintf("  %s<%s>%s", NHMagenta, data.GitBranch, Reset)
+		gitStr = fmt.Sprintf("  %s<%s>%s", NHMagenta, data.GitBranch, Reset)
 		if data.GitStaged > 0 {
-			line2 += fmt.Sprintf(" %s+%d%s", NHGreen, data.GitStaged, Reset)
+			gitStr += fmt.Sprintf(" %s+%d%s", NHGreen, data.GitStaged, Reset)
 		}
 		if data.GitDirty > 0 {
-			line2 += fmt.Sprintf(" %s~%d%s", NHOrange, data.GitDirty, Reset)
+			gitStr += fmt.Sprintf(" %s~%d%s", NHOrange, data.GitDirty, Reset)
 		}
 	}
-	line2 += fmt.Sprintf("  %s$:%s%s%s  %sT:%s%s",
-		NHYellow, NHYellow, FormatCostShort(data.DayCost), Reset,
-		NHGray, NHGray, data.SessionTime)
-	sb.WriteString(PadRight(line2, 77))
-	sb.WriteString(NHDark + "│" + Reset + "\n")
+
+	line2 := fmt.Sprintf("%s|%s %sDlvl:%s%s%s%s  %s$:%s%s  %sT:%s%s",
+		NHDark, Reset,
+		NHWhite, NHBrown, ShortenPath(data.ProjectPath, 25), Reset, gitStr,
+		NHYellow, FormatCostShort(data.DayCost), Reset,
+		NHGray, data.SessionTime, Reset)
+	sb.WriteString(nhPadLine(line2, width, NHDark+"|"+Reset))
 
 	// Separator (dungeon floor)
-	sb.WriteString(NHDark + "─────┼─────────────────────────────────────────────────────────────────────┼─────" + Reset + "\n")
+	sb.WriteString(NHDark + "-----+" + strings.Repeat("-", width-12) + "+-----" + Reset + "\n")
 
 	// Status bars (HP/Pw/AC style)
 	hp := 100 - data.ContextPercent
 	hpMax := 100
 	pw := 100 - data.API5hrPercent
 	pwMax := 100
+	ac := 100 - data.API7dayPercent
 
 	hpColor := NHGreen
 	if hp <= 20 {
@@ -104,18 +103,17 @@ func (t *NetHackTheme) Render(data StatusData) string {
 	}
 
 	// HP and Pw bars
-	hpBar := t.generateNHBar(hp, 15)
-	pwBar := t.generateNHBar(pw, 12)
-	acBar := t.generateNHBar(100-data.API7dayPercent, 12)
+	hpBar := t.generateNHBar(hp, 12)
+	pwBar := t.generateNHBar(pw, 10)
+	acBar := t.generateNHBar(ac, 10)
 
-	line3 := fmt.Sprintf("%s│%s %sHP:%s%s%s%d%s(%s%d%s)  %sPw:%s%s%s%d%s(%s%d%s)  %sAC:%s%s%s%d%s  %sXp:%s%s%s",
+	line3 := fmt.Sprintf("%s|%s %sHP:%s%s%s%d%s(%s%d%s) %sPw:%s%s%s%d%s(%s%d%s) %sAC:%s%s%s%d%s %sXp:%s%s%s",
 		NHDark, Reset,
 		NHWhite, hpColor, hpBar, hpColor, hp, NHDark, NHGray, hpMax, Reset,
 		NHWhite, NHBlue, pwBar, NHBlue, pw, NHDark, NHGray, pwMax, Reset,
-		NHWhite, NHCyan, acBar, NHCyan, 100-data.API7dayPercent, Reset,
+		NHWhite, NHCyan, acBar, NHCyan, ac, Reset,
 		NHWhite, NHMagenta, FormatTokens(data.TokenCount), Reset)
-	sb.WriteString(PadRight(line3, 77))
-	sb.WriteString(NHDark + "│" + Reset + "\n")
+	sb.WriteString(nhPadLine(line3, width, NHDark+"|"+Reset))
 
 	// Bottom status (Hunger/Encumbrance style)
 	hungerStatus := "Satiated"
@@ -125,20 +123,46 @@ func (t *NetHackTheme) Render(data StatusData) string {
 		hungerStatus = "Hungry"
 	}
 
-	line4 := fmt.Sprintf("%s│%s %s%s%s  %sBurdened%s  %s%s%s ses  %s%s%s/h rate  %s%s%s left",
+	line4 := fmt.Sprintf("%s|%s %s%s%s  %sBurdened%s  %s%s%s ses  %s%s/h%s rate  %s%s%s left",
 		NHDark, Reset,
 		NHOrange, hungerStatus, Reset,
 		NHYellow, Reset,
 		NHGreen, FormatCostShort(data.SessionCost), Reset,
 		NHRed, FormatCostShort(data.BurnRate), Reset,
 		NHGray, data.API5hrTimeLeft, Reset)
-	sb.WriteString(PadRight(line4, 77))
-	sb.WriteString(NHDark + "│" + Reset + "\n")
+	sb.WriteString(nhPadLine(line4, width, NHDark+"|"+Reset))
 
 	// Bottom wall
-	sb.WriteString(NHDark + "─────┴─────────────────────────────────────────────────────────────────────┴─────" + Reset + "\n")
+	sb.WriteString(NHDark + "-----+" + strings.Repeat("-", width-12) + "+-----" + Reset + "\n")
 
 	return sb.String()
+}
+
+func nhPadLine(line string, targetWidth int, suffix string) string {
+	visible := nhVisibleLen(line)
+	suffixLen := nhVisibleLen(suffix)
+	padding := targetWidth - visible - suffixLen
+	if padding < 0 {
+		padding = 0
+	}
+	return line + strings.Repeat(" ", padding) + suffix + "\n"
+}
+
+func nhVisibleLen(s string) int {
+	inEscape := false
+	count := 0
+	for _, r := range s {
+		if r == '\033' {
+			inEscape = true
+		} else if inEscape {
+			if r == 'm' {
+				inEscape = false
+			}
+		} else {
+			count++
+		}
+	}
+	return count
 }
 
 func (t *NetHackTheme) generateNHBar(percent, width int) string {
@@ -153,11 +177,11 @@ func (t *NetHackTheme) generateNHBar(percent, width int) string {
 
 	var bar strings.Builder
 	if filled > 0 {
-		bar.WriteString(strings.Repeat("█", filled))
+		bar.WriteString(strings.Repeat("#", filled))
 	}
 	if empty > 0 {
 		bar.WriteString(NHDark)
-		bar.WriteString(strings.Repeat("░", empty))
+		bar.WriteString(strings.Repeat("-", empty))
 		bar.WriteString(Reset)
 	}
 	return bar.String()
