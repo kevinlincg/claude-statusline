@@ -3,6 +3,7 @@ package themes
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // MUDRPGTheme MUD RPG 角色狀態風格
@@ -38,7 +39,7 @@ func (t *MUDRPGTheme) Render(data StatusData) string {
 	width := 80
 
 	// Header with character class style
-	modelColor, _ := GetModelConfig(data.ModelType)
+	modelColor, modelIcon := GetModelConfig(data.ModelType)
 	className := "Artificer"
 	if data.ModelType == "Opus" {
 		className = "Archmage"
@@ -46,18 +47,18 @@ func (t *MUDRPGTheme) Render(data StatusData) string {
 		className = "Apprentice"
 	}
 
-	// Top border
-	sb.WriteString(MUDDark + "+" + strings.Repeat("=", width-2) + "+" + Reset + "\n")
+	// Top border with double-line box drawing
+	sb.WriteString(MUDDark + "╔" + strings.Repeat("═", width-2) + "╗" + Reset + "\n")
 
 	// Character name and class
 	update := ""
 	if data.UpdateAvailable {
-		update = MUDGold + " *LEVEL UP*" + Reset
+		update = MUDGold + " *UP*" + Reset
 	}
 
 	gitStr := ""
 	if data.GitBranch != "" {
-		gitStr = fmt.Sprintf("  %s[%s]%s", MUDBrown, data.GitBranch, Reset)
+		gitStr = fmt.Sprintf(" %s<%s>%s", MUDBrown, data.GitBranch, Reset)
 		if data.GitStaged > 0 {
 			gitStr += fmt.Sprintf("%s+%d%s", MUDGreen, data.GitStaged, Reset)
 		}
@@ -66,20 +67,20 @@ func (t *MUDRPGTheme) Render(data StatusData) string {
 		}
 	}
 
-	line1 := fmt.Sprintf("%s|%s %s[%s]%s Lv.%s%s%s%s  %s%s%s%s",
+	line1 := fmt.Sprintf("%s║%s %s%s%s%s Lv.%s%s%s%s  %s%s%s%s",
 		MUDDark, Reset,
-		modelColor, data.ModelName, Reset,
+		modelColor, modelIcon, data.ModelName, Reset,
 		MUDCyan, data.Version, Reset, update,
-		MUDGray, ShortenPath(data.ProjectPath, 25), Reset, gitStr)
-	sb.WriteString(mudPadLine(line1, width, MUDDark+"|"+Reset))
+		MUDGray, ShortenPath(data.ProjectPath, 22), Reset, gitStr)
+	sb.WriteString(mudPadLine(line1, width, MUDDark+"║"+Reset))
 
 	// Separator
-	sb.WriteString(MUDDark + "+" + strings.Repeat("-", width-2) + "+" + Reset + "\n")
+	sb.WriteString(MUDDark + "╠" + strings.Repeat("═", width-2) + "╣" + Reset + "\n")
 
-	// Stats row 1: HP / MP / Class
-	hpBar := t.generateMUDBar(100-data.ContextPercent, 10, MUDRed)
-	mpBar := t.generateMUDBar(100-data.API5hrPercent, 8, MUDBlue)
-	xpBar := t.generateMUDBar(100-data.API7dayPercent, 8, MUDCyan)
+	// Stats row 1: HP / MP / XP / Class
+	hpBar := t.generateMUDBar(100-data.ContextPercent, 8, MUDRed)
+	mpBar := t.generateMUDBar(100-data.API5hrPercent, 6, MUDBlue)
+	xpBar := t.generateMUDBar(100-data.API7dayPercent, 6, MUDCyan)
 
 	hpColor := MUDGreen
 	if data.ContextPercent >= 80 {
@@ -88,42 +89,42 @@ func (t *MUDRPGTheme) Render(data StatusData) string {
 		hpColor = MUDGold
 	}
 
-	line2 := fmt.Sprintf("%s|%s %sHP%s%s%s%3d%%%s  %sMP%s%s%s%3d%%%s  %sXP%s%s%s%3d%%%s  %s%s%s",
+	line2 := fmt.Sprintf("%s║%s %sHP%s%s%s%3d%%%s %sMP%s%s%s%3d%%%s %sXP%s%s%s%3d%%%s %s%s%s %sGP%s%s",
 		MUDDark, Reset,
 		MUDRed, Reset, hpBar, hpColor, 100-data.ContextPercent, Reset,
 		MUDBlue, Reset, mpBar, MUDBlue, 100-data.API5hrPercent, Reset,
 		MUDCyan, Reset, xpBar, MUDCyan, 100-data.API7dayPercent, Reset,
-		MUDMagenta, className, Reset)
-	sb.WriteString(mudPadLine(line2, width, MUDDark+"|"+Reset))
+		MUDMagenta, className, Reset,
+		MUDGold, MUDGold, FormatCostShort(data.DayCost))
+	sb.WriteString(mudPadLine(line2, width, MUDDark+"║"+Reset))
 
 	// Stats row 2: Combat stats
-	line3 := fmt.Sprintf("%s|%s %sATK%s %-6s  %sDEF%s %-3d  %sSPD%s %-6s  %sLUK%s %d%%  %sGP%s %s",
+	line3 := fmt.Sprintf("%s║%s %sATK%s%-6s %sDEF%s%-3d %sSPD%s%-6s %sLUK%s%d%% %sSes%s%s %sRate%s%s/h",
 		MUDDark, Reset,
 		MUDRed, MUDWhite, FormatTokens(data.TokenCount),
 		MUDBlue, MUDWhite, data.MessageCount,
 		MUDGreen, MUDWhite, data.SessionTime,
 		MUDMagenta, MUDWhite, data.CacheHitRate,
-		MUDGold, MUDGold, FormatCostShort(data.DayCost))
-	sb.WriteString(mudPadLine(line3, width, MUDDark+"|"+Reset))
-
-	// Stats row 3: Equipment
-	line4 := fmt.Sprintf("%s|%s %sSes%s %s  %sRate%s %s/h  %s5hr%s %s  %s7day%s %s",
-		MUDDark, Reset,
 		MUDBrown, MUDGold, FormatCostShort(data.SessionCost),
-		MUDBrown, MUDRed, FormatCostShort(data.BurnRate),
-		MUDGray, MUDGray, data.API5hrTimeLeft,
-		MUDGray, MUDGray, data.API7dayTimeLeft)
-	sb.WriteString(mudPadLine(line4, width, MUDDark+"|"+Reset))
+		MUDBrown, MUDRed, FormatCostShort(data.BurnRate))
+	sb.WriteString(mudPadLine(line3, width, MUDDark+"║"+Reset))
+
+	// Stats row 3: Time left
+	line4 := fmt.Sprintf("%s║%s %s5hr%s %-6s  %s7day%s %-6s",
+		MUDDark, Reset,
+		MUDGray, MUDCyan, data.API5hrTimeLeft,
+		MUDGray, MUDCyan, data.API7dayTimeLeft)
+	sb.WriteString(mudPadLine(line4, width, MUDDark+"║"+Reset))
 
 	// Bottom border
-	sb.WriteString(MUDDark + "+" + strings.Repeat("=", width-2) + "+" + Reset + "\n")
+	sb.WriteString(MUDDark + "╚" + strings.Repeat("═", width-2) + "╝" + Reset + "\n")
 
 	return sb.String()
 }
 
 func mudPadLine(line string, targetWidth int, suffix string) string {
-	visible := mudVisibleLen(line)
-	suffixLen := mudVisibleLen(suffix)
+	visible := mudDisplayWidth(line)
+	suffixLen := mudDisplayWidth(suffix)
 	padding := targetWidth - visible - suffixLen
 	if padding < 0 {
 		padding = 0
@@ -131,9 +132,13 @@ func mudPadLine(line string, targetWidth int, suffix string) string {
 	return line + strings.Repeat(" ", padding) + suffix + "\n"
 }
 
-func mudVisibleLen(s string) int {
+// mudDisplayWidth calculates display width accounting for:
+// - ANSI escape codes (0 width)
+// - Emojis and wide characters (2 width)
+// - Regular ASCII (1 width)
+func mudDisplayWidth(s string) int {
 	inEscape := false
-	count := 0
+	width := 0
 	for _, r := range s {
 		if r == '\033' {
 			inEscape = true
@@ -142,10 +147,46 @@ func mudVisibleLen(s string) int {
 				inEscape = false
 			}
 		} else {
-			count++
+			if mudIsWideChar(r) {
+				width += 2
+			} else {
+				width += 1
+			}
 		}
 	}
-	return count
+	return width
+}
+
+// mudIsWideChar checks if a rune is a wide character (emoji or CJK)
+func mudIsWideChar(r rune) bool {
+	// Emojis and symbols that are typically 2 cells wide
+	if r >= 0x1F300 && r <= 0x1F9FF { // Misc Symbols, Emoticons, etc.
+		return true
+	}
+	if r >= 0x2600 && r <= 0x26FF { // Misc Symbols
+		return true
+	}
+	if r >= 0x2700 && r <= 0x27BF { // Dingbats
+		return true
+	}
+	// Box Drawing characters are 1 width
+	if r >= 0x2500 && r <= 0x257F {
+		return false
+	}
+	// CJK characters
+	if unicode.Is(unicode.Han, r) {
+		return true
+	}
+	// Full-width characters
+	if r >= 0xFF00 && r <= 0xFFEF {
+		return true
+	}
+	// Model icons (emojis)
+	switch r {
+	case '💛', '💙', '💚', '⚔', '🛡', '⏱', '★':
+		return true
+	}
+	return false
 }
 
 func (t *MUDRPGTheme) generateMUDBar(percent, width int, color string) string {
@@ -162,12 +203,12 @@ func (t *MUDRPGTheme) generateMUDBar(percent, width int, color string) string {
 	bar.WriteString(MUDDark + "[" + Reset)
 	if filled > 0 {
 		bar.WriteString(color)
-		bar.WriteString(strings.Repeat("=", filled))
+		bar.WriteString(strings.Repeat("█", filled))
 		bar.WriteString(Reset)
 	}
 	if empty > 0 {
 		bar.WriteString(MUDDark)
-		bar.WriteString(strings.Repeat("-", empty))
+		bar.WriteString(strings.Repeat("░", empty))
 		bar.WriteString(Reset)
 	}
 	bar.WriteString(MUDDark + "]" + Reset)
