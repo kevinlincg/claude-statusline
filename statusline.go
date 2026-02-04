@@ -329,7 +329,7 @@ func runInteractiveMenu() {
 			switch buf[0] {
 			case 'q', 'Q', 27: // q or Escape
 				fmt.Print("\033[2J\033[H")
-				fmt.Print("Cancelled\r\n")
+				fmt.Print("Canceled\r\n")
 				return
 			case 13, 10: // Enter
 				fmt.Print("\033[2J\033[H")

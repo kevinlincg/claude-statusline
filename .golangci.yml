@@ -21,8 +21,10 @@ linters-settings:
 
   gosec:
     excludes:
+      - G101 # False positive: color codes look like credentials
       - G104 # Audit errors not checked (allow for some error ignoring)
       - G304 # File path provided as taint input (allow file reading)
+      - G306 # WriteFile with 0644 is fine for user config files
 
   goimports:
     local-prefixes: statusline
