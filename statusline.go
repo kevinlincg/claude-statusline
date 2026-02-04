@@ -26,22 +26,22 @@ var modelPricing = map[string]struct {
 	CacheWrite float64
 }{
 	"Opus": {
-		Input:      15.0,
-		Output:     75.0,
-		CacheRead:  1.5,
-		CacheWrite: 18.75,
+		Input:      5.0,   // Opus 4.5: $5 per 1M input tokens
+		Output:     25.0,  // Opus 4.5: $25 per 1M output tokens
+		CacheRead:  0.5,   // Opus 4.5: $0.50 per 1M cache read tokens
+		CacheWrite: 6.25,  // Opus 4.5: $6.25 per 1M cache write tokens (5m)
 	},
 	"Sonnet": {
-		Input:      3.0,
-		Output:     15.0,
-		CacheRead:  0.3,
-		CacheWrite: 3.75,
+		Input:      3.0,   // Sonnet 4/4.5: $3 per 1M input tokens
+		Output:     15.0,  // Sonnet 4/4.5: $15 per 1M output tokens
+		CacheRead:  0.3,   // Sonnet 4/4.5: $0.30 per 1M cache read tokens
+		CacheWrite: 3.75,  // Sonnet 4/4.5: $3.75 per 1M cache write tokens (5m)
 	},
 	"Haiku": {
-		Input:      0.25,
-		Output:     1.25,
-		CacheRead:  0.03,
-		CacheWrite: 0.30,
+		Input:      1.0,   // Haiku 4.5: $1 per 1M input tokens
+		Output:     5.0,   // Haiku 4.5: $5 per 1M output tokens
+		CacheRead:  0.1,   // Haiku 4.5: $0.10 per 1M cache read tokens
+		CacheWrite: 1.25,  // Haiku 4.5: $1.25 per 1M cache write tokens (5m)
 	},
 }
 
