@@ -12,6 +12,10 @@
 
 Claude Code 用のカスタムステータスライン。Go 言語で作成。モデル情報、Git ステータス、API 使用量、トークン消費、コスト指標などを表示します。
 
+<p align="center">
+  <img src="assets/intro.gif" alt="Claude Statusline テーマデモ" width="750">
+</p>
+
 ## インストール
 
 ### 方法1：バイナリをダウンロード（推奨）
@@ -94,33 +98,17 @@ go build -o statusline .
 
 ### 利用可能なテーマ
 
-| テーマ | 説明 |
-|--------|------|
-| `classic` | オリジナルレイアウトスタイル |
-| `classic_framed` | ツリー構造＋フレーム、整列されたプログレスバー |
-| `minimal` | シンプルなツリー構造、ボーダーなし |
-| `compact` | 最小限の高さ、完全な情報 |
-| `boxed` | 完全なボーダーフレーム、対称的なセクション |
-| `zen` | ミニマリストの余白、穏やかでエレガント |
-| `hud` | SF HUD インターフェース、角括弧ラベル |
-| `cyberpunk` | ネオンデュアルカラーボーダー |
-| `synthwave` | ネオンサンセットグラデーション、80年代レトロフューチャー |
-| `matrix` | グリーンターミナルハッカースタイル |
-| `glitch` | デジタル歪み、サイバーパンク破壊美学 |
-| `ocean` | 深海の波グラデーション、穏やかなブルートーン |
-| `pixel` | 8-bit レトロゲーム、ブロック文字 |
-| `retro_crt` | グリーン蛍光スクリーン、スキャンライン効果 |
-| `steampunk` | ヴィクトリア朝の真鍮歯車、工業美学 |
-| `htop` | クラシックシステムモニター、カラフルなプログレスバー |
-| `btop` | モダンシステムモニター、グラデーションカラーと丸角フレーム |
-| `gtop` | ミニマルシステムモニター、スパークラインとクリーンなレイアウト |
-| `stui` | CPU ストレステストモニター、周波数/温度スタイル |
-| `bbs` | クラシック BBS ANSI アートスタイル |
-| `lord` | Legend of the Red Dragon BBS テキストゲームスタイル |
-| `tradewars` | Trade Wars 宇宙貿易ゲーム、宇宙船コンソール |
-| `nethack` | クラシック Roguelike ダンジョン探索スタイル |
-| `dungeon` | 松明に照らされた石壁、ダークアドベンチャー雰囲気 |
-| `mud_rpg` | クラシック MUD テキストアドベンチャーキャラクターステータス |
+**25種類のテーマ**が利用可能：
+
+| カテゴリ | テーマ |
+|----------|--------|
+| クラシック & ミニマル | `classic`, `classic_framed`, `minimal`, `compact`, `boxed`, `zen` |
+| SF & サイバーパンク | `hud`, `cyberpunk`, `synthwave`, `matrix`, `glitch` |
+| 自然 & 美学 | `ocean`, `steampunk` |
+| システムモニター | `htop`, `btop`, `gtop`, `stui` |
+| レトロ & ゲーム | `pixel`, `retro_crt`, `bbs`, `lord`, `tradewars`, `nethack`, `dungeon`, `mud_rpg` |
+
+**[すべてのテーマのスクリーンショットを見る →](THEMES.ja.md)**
 
 ## 表示情報
 

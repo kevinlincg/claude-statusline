@@ -98,140 +98,17 @@ Edit `~/.claude/statusline-go/config.json`:
 
 ### Available Themes
 
-#### Classic & Minimal
+**25 themes** across multiple categories:
 
-<details>
-<summary><b>classic</b> - Original layout style</summary>
-<img src="assets/themes/classic.png" alt="classic theme">
-</details>
+| Category | Themes |
+|----------|--------|
+| Classic & Minimal | `classic`, `classic_framed`, `minimal`, `compact`, `boxed`, `zen` |
+| Sci-Fi & Cyberpunk | `hud`, `cyberpunk`, `synthwave`, `matrix`, `glitch` |
+| Nature & Aesthetic | `ocean`, `steampunk` |
+| System Monitor | `htop`, `btop`, `gtop`, `stui` |
+| Retro & Gaming | `pixel`, `retro_crt`, `bbs`, `lord`, `tradewars`, `nethack`, `dungeon`, `mud_rpg` |
 
-<details>
-<summary><b>classic_framed</b> - Tree structure with frame, aligned progress bars (Default)</summary>
-<img src="assets/themes/classic_framed.png" alt="classic_framed theme">
-</details>
-
-<details>
-<summary><b>minimal</b> - Clean tree structure, no borders</summary>
-<img src="assets/themes/minimal.png" alt="minimal theme">
-</details>
-
-<details>
-<summary><b>compact</b> - Minimal height, complete info</summary>
-<img src="assets/themes/compact.png" alt="compact theme">
-</details>
-
-<details>
-<summary><b>boxed</b> - Full border frame, symmetrical sections</summary>
-<img src="assets/themes/boxed.png" alt="boxed theme">
-</details>
-
-<details>
-<summary><b>zen</b> - Minimalist whitespace, calm and elegant</summary>
-<img src="assets/themes/zen.png" alt="zen theme">
-</details>
-
-#### Sci-Fi & Cyberpunk
-
-<details>
-<summary><b>hud</b> - Sci-fi HUD interface with angle bracket labels</summary>
-<img src="assets/themes/hud.png" alt="hud theme">
-</details>
-
-<details>
-<summary><b>cyberpunk</b> - Neon dual-color borders</summary>
-<img src="assets/themes/cyberpunk.png" alt="cyberpunk theme">
-</details>
-
-<details>
-<summary><b>synthwave</b> - Neon sunset gradient, 80s retro-future</summary>
-<img src="assets/themes/synthwave.png" alt="synthwave theme">
-</details>
-
-<details>
-<summary><b>matrix</b> - Green terminal hacker style</summary>
-<img src="assets/themes/matrix.png" alt="matrix theme">
-</details>
-
-<details>
-<summary><b>glitch</b> - Digital distortion, cyberpunk broken aesthetic</summary>
-<img src="assets/themes/glitch.png" alt="glitch theme">
-</details>
-
-#### Nature & Aesthetic
-
-<details>
-<summary><b>ocean</b> - Deep sea wave gradient, calm blue tones</summary>
-<img src="assets/themes/ocean.png" alt="ocean theme">
-</details>
-
-<details>
-<summary><b>steampunk</b> - Victorian brass gears, industrial aesthetic</summary>
-<img src="assets/themes/steampunk.png" alt="steampunk theme">
-</details>
-
-#### System Monitor Style
-
-<details>
-<summary><b>htop</b> - Classic system monitor, colorful progress bars</summary>
-<img src="assets/themes/htop.png" alt="htop theme">
-</details>
-
-<details>
-<summary><b>btop</b> - Modern system monitor, gradient colors and rounded frames</summary>
-<img src="assets/themes/btop.png" alt="btop theme">
-</details>
-
-<details>
-<summary><b>gtop</b> - Minimal system monitor, sparklines and clean layout</summary>
-<img src="assets/themes/gtop.png" alt="gtop theme">
-</details>
-
-<details>
-<summary><b>stui</b> - CPU stress test monitor, frequency/temperature style</summary>
-<img src="assets/themes/stui.png" alt="stui theme">
-</details>
-
-#### Retro & Gaming
-
-<details>
-<summary><b>pixel</b> - 8-bit retro game, block characters</summary>
-<img src="assets/themes/pixel.png" alt="pixel theme">
-</details>
-
-<details>
-<summary><b>retro_crt</b> - Green phosphor screen, scanline effect</summary>
-<img src="assets/themes/retro_crt.png" alt="retro_crt theme">
-</details>
-
-<details>
-<summary><b>bbs</b> - Classic BBS ANSI art style</summary>
-<img src="assets/themes/bbs.png" alt="bbs theme">
-</details>
-
-<details>
-<summary><b>lord</b> - Legend of the Red Dragon BBS text game style</summary>
-<img src="assets/themes/lord.png" alt="lord theme">
-</details>
-
-<details>
-<summary><b>tradewars</b> - Trade Wars space trading game, starship console</summary>
-<img src="assets/themes/tradewars.png" alt="tradewars theme">
-</details>
-
-<details>
-<summary><b>nethack</b> - Classic Roguelike dungeon exploration style</summary>
-<img src="assets/themes/nethack.png" alt="nethack theme">
-</details>
-
-<details>
-<summary><b>dungeon</b> - Stone walls with torch lighting, dark adventure atmosphere</summary>
-<img src="assets/themes/dungeon.png" alt="dungeon theme">
-</details>
-
-<details>
-<summary><b>mud_rpg</b> - Classic MUD text adventure character status interface</summary>
-<img src="assets/themes/mud_rpg.png" alt="mud_rpg theme">
-</details>
+**[View all themes with screenshots →](THEMES.md)**
 
 ## Display Information
 

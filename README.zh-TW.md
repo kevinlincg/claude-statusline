@@ -12,6 +12,10 @@
 
 為 Claude Code 打造的自訂狀態列，使用 Go 語言編寫。顯示模型資訊、Git 狀態、API 使用量、Token 消耗、成本指標等。
 
+<p align="center">
+  <img src="assets/intro.gif" alt="Claude Statusline 主題展示" width="750">
+</p>
+
 ## 安裝
 
 ### 方式一：下載執行檔（推薦）
@@ -94,33 +98,17 @@ go build -o statusline .
 
 ### 可用主題
 
-| 主題 | 說明 |
+目前提供 **25 種主題**：
+
+| 分類 | 主題 |
 |------|------|
-| `classic` | 原版經典：保持原有佈局風格 |
-| `classic_framed` | 經典樹狀+框線：左側文字資訊，右側光棒垂直對齊 |
-| `minimal` | 簡潔樹狀：無外框，樹狀結構顯示資訊 |
-| `compact` | 精簡三行：最小高度，資訊完整 |
-| `boxed` | 框線整齊：完整框線包圍，左右對稱分區 |
-| `zen` | 禪風：極簡留白，寧靜淡雅 |
-| `hud` | 科幻 HUD：未來感介面，角括號標籤 |
-| `cyberpunk` | 賽博朋克：霓虹雙色框線 |
-| `synthwave` | 合成波：霓虹日落漸層，80年代復古未來 |
-| `matrix` | 矩陣駭客：綠色終端機風格 |
-| `glitch` | 故障風：數位錯位，賽博龐克破碎美學 |
-| `ocean` | 深海：海洋波浪漸層，寧靜藍調 |
-| `pixel` | 像素風：8-bit 復古遊戲，方塊字符 |
-| `retro_crt` | 復古 CRT：綠色磷光螢幕，掃描線效果 |
-| `steampunk` | 蒸汽龐克：維多利亞黃銅齒輪，工業美學 |
-| `htop` | htop：經典系統監視器，彩色進度條風格 |
-| `btop` | btop：現代系統監視器，漸層色彩與圓角框風格 |
-| `gtop` | gtop：簡約系統監視器，火花圖與乾淨排版 |
-| `stui` | s-tui：CPU 壓力測試監視器，頻率溫度圖風格 |
-| `bbs` | BBS：經典電子佈告欄 ANSI 藝術風格 |
-| `lord` | LORD：紅龍傳說 BBS 經典文字遊戲風格 |
-| `tradewars` | Trade Wars：太空貿易遊戲，星艦控制台風格 |
-| `nethack` | NetHack：經典 Roguelike 地牢探索風格 |
-| `dungeon` | 地牢：石牆火把照明，黑暗冒險氛圍 |
-| `mud_rpg` | MUD RPG：經典文字冒險遊戲角色狀態介面 |
+| 經典 & 簡約 | `classic`, `classic_framed`, `minimal`, `compact`, `boxed`, `zen` |
+| 科幻 & 賽博龐克 | `hud`, `cyberpunk`, `synthwave`, `matrix`, `glitch` |
+| 自然 & 美學 | `ocean`, `steampunk` |
+| 系統監視器 | `htop`, `btop`, `gtop`, `stui` |
+| 復古 & 遊戲 | `pixel`, `retro_crt`, `bbs`, `lord`, `tradewars`, `nethack`, `dungeon`, `mud_rpg` |
+
+**[查看所有主題截圖 →](THEMES.zh-TW.md)**
 
 ## 顯示資訊
 
