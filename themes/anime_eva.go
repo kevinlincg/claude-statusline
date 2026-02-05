@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// EVATheme Neon Genesis Evangelion NERV interface style
+// EVATheme Evangelion NERV terminal style
 type EVATheme struct{}
 
 func init() {
@@ -17,116 +17,105 @@ func (t *EVATheme) Name() string {
 }
 
 func (t *EVATheme) Description() string {
-	return "EVA: NERV system interface, sync rate and A.T. Field"
+	return "EVA: NERV terminal interface with sync rate display"
 }
 
 const (
-	EVAOrange     = "\033[38;2;255;102;0m"
-	EVARed        = "\033[38;2;204;0;0m"
-	EVAPurple     = "\033[38;2;128;0;128m"
-	EVAGreen      = "\033[38;2;0;255;0m"
-	EVAYellow     = "\033[38;2;255;255;0m"
-	EVABlue       = "\033[38;2;0;128;255m"
-	EVADark       = "\033[38;2;40;40;40m"
-	EVAWhite      = "\033[38;2;255;255;255m"
-	EVABgOrange   = "\033[48;2;255;102;0m"
-	EVABgRed      = "\033[48;2;80;0;0m"
+	EVAOrange = "\033[38;2;255;103;0m"
+	EVAPurple = "\033[38;2;128;0;128m"
+	EVAGreen  = "\033[38;2;0;255;0m"
+	EVARed    = "\033[38;2;255;0;0m"
+	EVABlue   = "\033[38;2;0;150;255m"
+	EVAWhite  = "\033[38;2;255;255;255m"
+	EVAGray   = "\033[38;2;100;100;100m"
+	EVADark   = "\033[38;2;30;30;30m"
 )
 
 func (t *EVATheme) Render(data StatusData) string {
 	var sb strings.Builder
 
-	// NERV Header
-	sb.WriteString(EVAOrange + "╔══════════════════════════════════════════════════════════════════════════════════════╗" + Reset + "\n")
+	// NERV Logo Header
+	sb.WriteString("\n")
+	sb.WriteString("        " + EVARed + "███╗   ██╗" + EVAOrange + "███████╗" + EVARed + "██████╗ " + EVAOrange + "██╗   ██╗" + Reset + "\n")
+	sb.WriteString("        " + EVARed + "████╗  ██║" + EVAOrange + "██╔════╝" + EVARed + "██╔══██╗" + EVAOrange + "██║   ██║" + Reset + "\n")
+	sb.WriteString("        " + EVARed + "██╔██╗ ██║" + EVAOrange + "█████╗  " + EVARed + "██████╔╝" + EVAOrange + "██║   ██║" + Reset + "\n")
+	sb.WriteString("        " + EVARed + "██║╚██╗██║" + EVAOrange + "██╔══╝  " + EVARed + "██╔══██╗" + EVAOrange + "╚██╗ ██╔╝" + Reset + "\n")
+	sb.WriteString("        " + EVARed + "██║ ╚████║" + EVAOrange + "███████╗" + EVARed + "██║  ██║" + EVAOrange + " ╚████╔╝ " + Reset + "\n")
+	sb.WriteString("        " + EVAGray + "╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝  ╚═══╝ " + Reset + "\n")
+	sb.WriteString("      " + EVAGray + "God's in his heaven. All's right with the world." + Reset + "\n")
+	sb.WriteString("\n")
 
-	// Title line with NERV branding
+	// Warning bar if context high
+	if data.ContextPercent > 75 {
+		sb.WriteString("  " + EVARed + "▓▓▓ WARNING ▓▓▓ PATTERN BLUE ▓▓▓ ANGEL DETECTED ▓▓▓ WARNING ▓▓▓" + Reset + "\n")
+	} else {
+		sb.WriteString("  " + EVAGreen + "─────────────────── SYSTEM STATUS: NOMINAL ───────────────────" + Reset + "\n")
+	}
+	sb.WriteString("\n")
+
 	modelColor, modelIcon := GetModelConfig(data.ModelType)
-	warning := ""
-	if data.UpdateAvailable {
-		warning = EVARed + " [UPDATE AVAILABLE]" + Reset
+	pilot := "REI"
+	unit := "EVA-00"
+	if data.ModelType == "Opus" {
+		pilot = "SHINJI"
+		unit = "EVA-01"
+	} else if data.ModelType == "Haiku" {
+		pilot = "ASUKA"
+		unit = "EVA-02"
 	}
 
-	title := fmt.Sprintf(" %s%s NERV SYSTEM%s  %s%s%s %s%s%s%s",
-		EVABgOrange, EVADark, Reset,
-		modelColor, modelIcon, data.ModelName,
-		EVAGreen, data.Version, Reset, warning)
+	// Pilot Info Block
+	sb.WriteString(fmt.Sprintf("  %s┌─ PILOT ─────────────────────────────────────────────────────┐%s\n", EVAOrange, Reset))
+	sb.WriteString(fmt.Sprintf("  %s│%s  NAME: %s%-10s%s  UNIT: %s%-8s%s  MODEL: %s%s%-10s%s  %s│%s\n",
+		EVAOrange, Reset,
+		EVAWhite, pilot, Reset,
+		EVAWhite, unit, Reset,
+		modelColor, modelIcon, data.ModelName, Reset,
+		EVAOrange, Reset))
+	sb.WriteString(fmt.Sprintf("  %s└─────────────────────────────────────────────────────────────┘%s\n", EVAOrange, Reset))
 
-	sb.WriteString(EVAOrange + "║" + Reset)
-	sb.WriteString(PadRight(title, 88))
-	sb.WriteString(EVAOrange + "║" + Reset + "\n")
-
-	sb.WriteString(EVAOrange + "╠══════════════════════════════════════════════════════════════════════════════════════╣" + Reset + "\n")
-
-	// Project and Git info
-	gitInfo := ""
-	if data.GitBranch != "" {
-		gitInfo = fmt.Sprintf("%s[%s]%s", EVABlue, data.GitBranch, Reset)
-		if data.GitStaged > 0 {
-			gitInfo += fmt.Sprintf(" %s+%d%s", EVAGreen, data.GitStaged, Reset)
-		}
-		if data.GitDirty > 0 {
-			gitInfo += fmt.Sprintf(" %s*%d%s", EVAYellow, data.GitDirty, Reset)
-		}
-	}
-
-	line1 := fmt.Sprintf(" %sPILOT:%s %s  %sUNIT:%s %s",
-		EVAOrange, Reset, ShortenPath(data.ProjectPath, 30),
-		EVAOrange, Reset, gitInfo)
-
-	sb.WriteString(EVAOrange + "║" + Reset)
-	sb.WriteString(PadRight(line1, 88))
-	sb.WriteString(EVAOrange + "║" + Reset + "\n")
-
-	sb.WriteString(EVAOrange + "╠══════════════════════════════════════════════════════════════════════════════════════╣" + Reset + "\n")
-
-	// Sync Rate (Context) and A.T. Field (API limits)
+	// Sync Rate Display (Context)
 	syncColor := EVAGreen
+	syncStatus := "STABLE"
 	if data.ContextPercent > 75 {
 		syncColor = EVARed
+		syncStatus = "CRITICAL"
 	} else if data.ContextPercent > 50 {
-		syncColor = EVAYellow
+		syncColor = EVAOrange
+		syncStatus = "ELEVATED"
 	}
 
-	line2 := fmt.Sprintf(" %sSYNC RATE%s    %s  %s%3d%%%s   %sA.T. FIELD%s  %s  %s%3d%%%s  %s%s%s",
-		EVAOrange, Reset,
-		t.generateEVABar(data.ContextPercent, 15, syncColor),
-		syncColor, data.ContextPercent, Reset,
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("  %s╔═══════════════════════════════════════╗%s\n", EVAPurple, Reset))
+	sb.WriteString(fmt.Sprintf("  %s║%s    %sSYNCHRONIZATION  RATE%s              %s║%s\n", EVAPurple, Reset, EVAWhite, Reset, EVAPurple, Reset))
+	sb.WriteString(fmt.Sprintf("  %s║%s               %s", EVAPurple, Reset, syncColor))
+	sb.WriteString(fmt.Sprintf("  %3d.%02d %%  ", data.ContextPercent, (data.ContextPercent*7)%100))
+	sb.WriteString(fmt.Sprintf("%s              %s║%s\n", Reset, EVAPurple, Reset))
+	sb.WriteString(fmt.Sprintf("  %s║%s  %s  %s%s%s  %s║%s\n",
 		EVAPurple, Reset,
-		t.generateEVABar(100-data.API5hrPercent, 12, EVAPurple),
-		EVAPurple, 100-data.API5hrPercent, Reset,
-		EVADark, data.API5hrTimeLeft, Reset)
+		t.generateEVABar(data.ContextPercent, 28, syncColor),
+		syncColor, syncStatus, Reset, EVAPurple, Reset))
+	sb.WriteString(fmt.Sprintf("  %s╚═══════════════════════════════════════╝%s\n", EVAPurple, Reset))
 
-	sb.WriteString(EVAOrange + "║" + Reset)
-	sb.WriteString(PadRight(line2, 88))
-	sb.WriteString(EVAOrange + "║" + Reset + "\n")
+	// A.T. Field and Umbilical Status
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("  %s▸ A.T. FIELD%s    ", EVAOrange, Reset))
+	sb.WriteString(t.generateEVABar(100-data.API5hrPercent, 18, EVAOrange))
+	sb.WriteString(fmt.Sprintf("  %s%3d%%%s  %s%s%s\n", EVAOrange, 100-data.API5hrPercent, Reset, EVAGray, data.API5hrTimeLeft, Reset))
 
-	// Energy and damage stats
-	line3 := fmt.Sprintf(" %sENERGY%s %s%s%s tok  %sTIME%s %s  %sDAMAGE%s %s%s%s  %sWEEKLY%s %s  %s%3d%%%s  %s%s%s",
-		EVAGreen, Reset, EVAWhite, FormatTokens(data.TokenCount), Reset,
-		EVABlue, Reset, data.SessionTime,
-		EVARed, Reset, EVAYellow, FormatCost(data.SessionCost), Reset,
-		EVAOrange, Reset,
-		t.generateEVABar(100-data.API7dayPercent, 10, EVAOrange),
-		EVAOrange, 100-data.API7dayPercent, Reset,
-		EVADark, data.API7dayTimeLeft, Reset)
-
-	sb.WriteString(EVAOrange + "║" + Reset)
-	sb.WriteString(PadRight(line3, 88))
-	sb.WriteString(EVAOrange + "║" + Reset + "\n")
+	sb.WriteString(fmt.Sprintf("  %s▸ UMBILICAL%s     ", EVABlue, Reset))
+	sb.WriteString(t.generateEVABar(100-data.API7dayPercent, 18, EVABlue))
+	sb.WriteString(fmt.Sprintf("  %s%3d%%%s  %s%s%s\n", EVABlue, 100-data.API7dayPercent, Reset, EVAGray, data.API7dayTimeLeft, Reset))
 
 	// Bottom stats
-	line4 := fmt.Sprintf(" %sMSG%s %s%d%s  %sDAY%s %s%s%s  %sMON%s %s%s%s  %sRATE%s %s%s/h%s  %sEFF%s %s%d%%%s",
-		EVABlue, Reset, EVAWhite, data.MessageCount, Reset,
-		EVAYellow, Reset, EVAYellow, FormatCost(data.DayCost), Reset,
-		EVAPurple, Reset, EVAPurple, FormatCost(data.MonthCost), Reset,
-		EVARed, Reset, EVARed, FormatCost(data.BurnRate), Reset,
-		EVAGreen, Reset, EVAGreen, data.CacheHitRate, Reset)
-
-	sb.WriteString(EVAOrange + "║" + Reset)
-	sb.WriteString(PadRight(line4, 88))
-	sb.WriteString(EVAOrange + "║" + Reset + "\n")
-
-	sb.WriteString(EVAOrange + "╚══════════════════════════════════════════════════════════════════════════════════════╝" + Reset + "\n")
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("  %s─────────────────────────────────────────────────────────────%s\n", EVAGray, Reset))
+	sb.WriteString(fmt.Sprintf("  %sDATA:%s %s  %sTIME:%s %s  %sOPS:%s %d  %sCOST:%s $%s  %sVER:%s %s\n",
+		EVAGray, Reset, FormatTokens(data.TokenCount),
+		EVAGray, Reset, data.SessionTime,
+		EVAGray, Reset, data.MessageCount,
+		EVAGray, Reset, FormatCost(data.SessionCost),
+		EVAGray, Reset, data.Version))
 
 	return sb.String()
 }
@@ -142,7 +131,7 @@ func (t *EVATheme) generateEVABar(percent, width int, color string) string {
 	empty := width - filled
 
 	var bar strings.Builder
-	bar.WriteString(EVADark + "[" + Reset)
+	bar.WriteString(EVAGray + "│" + Reset)
 	if filled > 0 {
 		bar.WriteString(color)
 		bar.WriteString(strings.Repeat("█", filled))
@@ -153,6 +142,6 @@ func (t *EVATheme) generateEVABar(percent, width int, color string) string {
 		bar.WriteString(strings.Repeat("░", empty))
 		bar.WriteString(Reset)
 	}
-	bar.WriteString(EVADark + "]" + Reset)
+	bar.WriteString(EVAGray + "│" + Reset)
 	return bar.String()
 }

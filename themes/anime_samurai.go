@@ -21,52 +21,33 @@ func (t *SamuraiTheme) Description() string {
 }
 
 const (
-	SMRRed    = "\033[38;2;180;50;50m"
-	SMRGold   = "\033[38;2;200;160;80m"
-	SMRBlack  = "\033[38;2;30;30;30m"
-	SMRWhite  = "\033[38;2;245;240;230m"
-	SMRGray   = "\033[38;2;120;110;100m"
-	SMRInk    = "\033[38;2;50;50;60m"
+	SMRRed   = "\033[38;2;180;50;50m"
+	SMRGold  = "\033[38;2;200;160;80m"
+	SMRBlack = "\033[38;2;30;30;30m"
+	SMRWhite = "\033[38;2;245;240;230m"
+	SMRGray  = "\033[38;2;120;110;100m"
+	SMRInk   = "\033[38;2;50;50;60m"
 )
 
 func (t *SamuraiTheme) Render(data StatusData) string {
 	var sb strings.Builder
 
-	// Traditional scroll top
-	sb.WriteString(SMRGold + "                    ╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┏━━━━━━━━━━━━━━━┫" + Reset + "                                           " + SMRGold + "┣━━━━━━━━━━━━━━━┓" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
-
-	// Title with brush style
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                        " + SMRRed + "武" + SMRBlack + " 士 " + SMRRed + "道" + Reset + "   " + SMRInk + "侍" + Reset + "                               " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                      " + SMRGray + "━━ SAMURAI ━━" + Reset + "                                " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
+	// Compact scroll header
+	sb.WriteString(SMRGold + "    ╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮" + Reset + "\n")
+	sb.WriteString(SMRGold + "    ┃" + Reset + "        " + SMRRed + "武" + SMRInk + " 士 " + SMRRed + "道" + Reset + "   " + SMRGray + "━━ SAMURAI ━━" + Reset + "   " + SMRInk + "侍" + Reset + "                            " + SMRGold + "┃" + Reset + "\n")
+	sb.WriteString(SMRGold + "    ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫" + Reset + "\n")
 
 	modelColor, modelIcon := GetModelConfig(data.ModelType)
-	rank := "Ronin"
+	rank := "浪人"
 	if data.ModelType == "Opus" {
-		rank = "Shogun"
+		rank = "将軍"
 	} else if data.ModelType == "Haiku" {
-		rank = "Ashigaru"
+		rank = "足軽"
 	}
-
-	update := ""
-	if data.UpdateAvailable {
-		update = fmt.Sprintf(" %s【新】%s", SMRRed, Reset)
-	}
-
-	line1 := fmt.Sprintf("    %s刀:%s %s%s%s    %s位:%s %s%s%s    %s%s%s%s",
-		SMRInk, Reset, modelColor, modelIcon, data.ModelName,
-		SMRInk, Reset, SMRGold, rank, Reset,
-		SMRGray, data.Version, Reset, update)
-
-	sb.WriteString(SMRGold + "    ┃" + Reset + "  ")
-	sb.WriteString(PadRight(line1, 72))
-	sb.WriteString(SMRGold + "┃" + Reset + "\n")
 
 	gitInfo := ""
 	if data.GitBranch != "" {
-		gitInfo = fmt.Sprintf("  %s⚔%s%s", SMRInk, data.GitBranch, Reset)
+		gitInfo = fmt.Sprintf(" %s⚔%s%s", SMRInk, data.GitBranch, Reset)
 		if data.GitStaged > 0 {
 			gitInfo += fmt.Sprintf(" %s+%d%s", SMRGold, data.GitStaged, Reset)
 		}
@@ -75,16 +56,16 @@ func (t *SamuraiTheme) Render(data StatusData) string {
 		}
 	}
 
-	line2 := fmt.Sprintf("    %s道:%s %s%s",
-		SMRInk, Reset, ShortenPath(data.ProjectPath, 45), gitInfo)
+	line1 := fmt.Sprintf("  %s刀:%s %s%s%s  %s位:%s %s%s%s  %s道:%s %s%s",
+		SMRInk, Reset, modelColor, modelIcon, data.ModelName,
+		SMRInk, Reset, SMRGold, rank, Reset,
+		SMRInk, Reset, ShortenPath(data.ProjectPath, 28), gitInfo)
 
-	sb.WriteString(SMRGold + "    ┃" + Reset + "  ")
-	sb.WriteString(PadRight(line2, 72))
+	sb.WriteString(SMRGold + "    ┃" + Reset)
+	sb.WriteString(PadRight(line1, 75))
 	sb.WriteString(SMRGold + "┃" + Reset + "\n")
 
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "  " + SMRGray + "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄" + Reset + "  " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
+	sb.WriteString(SMRGold + "    ┣" + SMRGray + "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄" + SMRGold + "┫" + Reset + "\n")
 
 	// Stats with brush-style bars
 	kiColor := SMRGold
@@ -92,47 +73,31 @@ func (t *SamuraiTheme) Render(data StatusData) string {
 		kiColor = SMRRed
 	}
 
-	line3 := fmt.Sprintf("        %s気%s  %s  %s%3d%%%s",
-		SMRRed, Reset, t.generateSMRBar(data.ContextPercent, 20, kiColor), kiColor, data.ContextPercent, Reset)
+	line2 := fmt.Sprintf("  %s気%s %s %s%3d%%%s  %s力%s %s %s%3d%%%s %s%s%s  %s魂%s %s %s%3d%%%s %s%s%s",
+		SMRRed, Reset, t.generateSMRBar(data.ContextPercent, 12, kiColor), kiColor, data.ContextPercent, Reset,
+		SMRGold, Reset, t.generateSMRBar(100-data.API5hrPercent, 10, SMRGold), SMRGold, 100-data.API5hrPercent, Reset, SMRGray, data.API5hrTimeLeft, Reset,
+		SMRInk, Reset, t.generateSMRBar(100-data.API7dayPercent, 10, SMRInk), SMRInk, 100-data.API7dayPercent, Reset, SMRGray, data.API7dayTimeLeft, Reset)
 
 	sb.WriteString(SMRGold + "    ┃" + Reset)
-	sb.WriteString(PadRight(line3, 74))
+	sb.WriteString(PadRight(line2, 75))
 	sb.WriteString(SMRGold + "┃" + Reset + "\n")
 
-	line4 := fmt.Sprintf("        %s力%s  %s  %s%3d%%%s  %s%s%s",
-		SMRGold, Reset, t.generateSMRBar(100-data.API5hrPercent, 20, SMRGold),
-		SMRGold, 100-data.API5hrPercent, Reset, SMRGray, data.API5hrTimeLeft, Reset)
+	sb.WriteString(SMRGold + "    ┣" + SMRGray + "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄" + SMRGold + "┫" + Reset + "\n")
 
-	sb.WriteString(SMRGold + "    ┃" + Reset)
-	sb.WriteString(PadRight(line4, 74))
-	sb.WriteString(SMRGold + "┃" + Reset + "\n")
-
-	line5 := fmt.Sprintf("        %s魂%s  %s  %s%3d%%%s  %s%s%s",
-		SMRInk, Reset, t.generateSMRBar(100-data.API7dayPercent, 20, SMRInk),
-		SMRInk, 100-data.API7dayPercent, Reset, SMRGray, data.API7dayTimeLeft, Reset)
-
-	sb.WriteString(SMRGold + "    ┃" + Reset)
-	sb.WriteString(PadRight(line5, 74))
-	sb.WriteString(SMRGold + "┃" + Reset + "\n")
-
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "  " + SMRGray + "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄" + Reset + "  " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
-
-	line6 := fmt.Sprintf("        %s%s%s 文字  %s%s%s  %s%d%s 斬  %s金%s%s  %s%d%%%s 効",
+	line3 := fmt.Sprintf("  %s%s%s 文字  %s%s%s  %s%d%s 斬  %s金%s%s  %s$%s/日%s  %s%d%%%s 効  %s%s%s",
 		SMRWhite, FormatTokens(data.TokenCount), Reset,
 		SMRGray, data.SessionTime, Reset,
 		SMRInk, data.MessageCount, Reset,
 		SMRGold, FormatCost(data.SessionCost), Reset,
-		SMRRed, data.CacheHitRate, Reset)
+		SMRRed, FormatCost(data.DayCost), Reset,
+		SMRGold, data.CacheHitRate, Reset,
+		SMRGray, data.Version, Reset)
 
 	sb.WriteString(SMRGold + "    ┃" + Reset)
-	sb.WriteString(PadRight(line6, 74))
+	sb.WriteString(PadRight(line3, 75))
 	sb.WriteString(SMRGold + "┃" + Reset + "\n")
 
-	sb.WriteString(SMRGold + "    ┃" + Reset + "                                                                              " + SMRGold + "┃" + Reset + "\n")
-	sb.WriteString(SMRGold + "    ┗━━━━━━━━━━━━━━━┫" + Reset + "                                           " + SMRGold + "┣━━━━━━━━━━━━━━━┛" + Reset + "\n")
-	sb.WriteString(SMRGold + "                    ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯" + Reset + "\n")
+	sb.WriteString(SMRGold + "    ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯" + Reset + "\n")
 
 	return sb.String()
 }

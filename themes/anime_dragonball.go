@@ -17,122 +17,77 @@ func (t *DragonBallTheme) Name() string {
 }
 
 func (t *DragonBallTheme) Description() string {
-	return "Dragon Ball: Scouter power level display"
+	return "Dragon Ball: Scouter power level circular display"
 }
 
 const (
-	DBGreen       = "\033[38;2;0;255;128m"
-	DBBrightGreen = "\033[38;2;128;255;128m"
-	DBYellow      = "\033[38;2;255;255;0m"
-	DBOrange      = "\033[38;2;255;165;0m"
-	DBRed         = "\033[38;2;255;0;0m"
-	DBCyan        = "\033[38;2;0;255;255m"
-	DBDark        = "\033[38;2;0;80;40m"
-	DBScanLine    = "\033[38;2;0;100;50m"
+	DBGreen  = "\033[38;2;0;255;128m"
+	DBYellow = "\033[38;2;255;255;0m"
+	DBOrange = "\033[38;2;255;165;0m"
+	DBRed    = "\033[38;2;255;0;0m"
+	DBCyan   = "\033[38;2;0;255;255m"
+	DBDark   = "\033[38;2;0;60;30m"
+	DBScan   = "\033[38;2;0;100;50m"
 )
 
 func (t *DragonBallTheme) Render(data StatusData) string {
 	var sb strings.Builder
 
-	// Scouter frame
-	sb.WriteString(DBGreen + "┌─────────────────────────────────────────────────────────────────────────────────┐" + Reset + "\n")
-
-	// Model and scan line effect
-	modelColor, modelIcon := GetModelConfig(data.ModelType)
-
-	// Power level calculation (tokens as power level)
+	// Power level determines color
 	powerLevel := data.TokenCount
 	powerColor := DBGreen
-	if powerLevel > 100000 {
-		powerColor = DBRed // It's over 9000!!!
-	} else if powerLevel > 50000 {
+	warning := ""
+	if powerLevel > 9000 {
+		powerColor = DBRed
+		warning = " IT'S OVER 9000!!!"
+	} else if powerLevel > 5000 {
 		powerColor = DBOrange
-	} else if powerLevel > 10000 {
+	} else if powerLevel > 1000 {
 		powerColor = DBYellow
 	}
 
-	line1 := fmt.Sprintf(" %s▓▓%s SCOUTER v%s %s▓▓%s  %s%s%s %s",
-		DBScanLine, Reset, data.Version, DBScanLine, Reset,
-		modelColor, modelIcon, data.ModelName, Reset)
-	if data.UpdateAvailable {
-		line1 += fmt.Sprintf(" %s[NEW]%s", DBYellow, Reset)
-	}
+	// Scouter circular frame
+	sb.WriteString(DBGreen + "    ╭──────────────────────────────────────────────────────────────────────────╮" + Reset + "\n")
+	sb.WriteString(DBGreen + "   ╱" + DBScan + "░░" + DBGreen + "╲" + Reset + "  " + DBCyan + "◉ SCOUTER ACTIVATED" + Reset + "                                              " + DBGreen + "│" + Reset + "\n")
+	sb.WriteString(DBGreen + "  │" + DBScan + "░░░░" + DBGreen + "│" + Reset + "  ════════════════════════════════════════════════════════════  " + DBGreen + "│" + Reset + "\n")
 
-	sb.WriteString(DBGreen + "│" + Reset)
-	sb.WriteString(PadRight(line1, 83))
-	sb.WriteString(DBGreen + "│" + Reset + "\n")
-
-	sb.WriteString(DBGreen + "├" + DBScanLine + "─────────────────────────────────────────────────────────────────────────────────" + DBGreen + "┤" + Reset + "\n")
-
-	// Power Level display (main focus)
-	powerStr := fmt.Sprintf("%d", powerLevel)
-	line2 := fmt.Sprintf(" %s>>> POWER LEVEL:%s %s%s%s",
-		DBGreen, Reset, powerColor, powerStr, Reset)
-
-	sb.WriteString(DBGreen + "│" + Reset)
-	sb.WriteString(PadRight(line2, 83))
-	sb.WriteString(DBGreen + "│" + Reset + "\n")
+	// Power level display
+	powerStr := fmt.Sprintf("POWER LEVEL: %s%d%s%s", powerColor, powerLevel, Reset, warning)
+	sb.WriteString(DBGreen + "  │" + DBScan + "░" + powerColor + "◎" + DBScan + "░" + DBGreen + "│" + Reset + "  " + powerStr)
+	padding := 62 - len(fmt.Sprintf("POWER LEVEL: %d%s", powerLevel, warning))
+	sb.WriteString(strings.Repeat(" ", padding) + DBGreen + "│" + Reset + "\n")
 
 	// Target info
-	gitInfo := ""
-	if data.GitBranch != "" {
-		gitInfo = fmt.Sprintf(" %s⚡%s%s", DBCyan, data.GitBranch, Reset)
-		if data.GitStaged > 0 {
-			gitInfo += fmt.Sprintf(" %s+%d%s", DBBrightGreen, data.GitStaged, Reset)
-		}
-		if data.GitDirty > 0 {
-			gitInfo += fmt.Sprintf(" %s~%d%s", DBYellow, data.GitDirty, Reset)
-		}
-	}
+	modelColor, modelIcon := GetModelConfig(data.ModelType)
+	sb.WriteString(DBGreen + "  │" + DBScan + "░░░░" + DBGreen + "│" + Reset + "  ")
+	targetLine := fmt.Sprintf("TARGET: %s%s%s  BRANCH: %s%s%s", modelColor, modelIcon+data.ModelName, Reset, DBCyan, data.GitBranch, Reset)
+	sb.WriteString(targetLine)
+	sb.WriteString(strings.Repeat(" ", 62-len(fmt.Sprintf("TARGET: %s  BRANCH: %s", modelIcon+data.ModelName, data.GitBranch))) + DBGreen + "│" + Reset + "\n")
 
-	line3 := fmt.Sprintf(" %sTARGET:%s %s%s",
-		DBGreen, Reset, ShortenPath(data.ProjectPath, 40), gitInfo)
+	sb.WriteString(DBGreen + "   ╲" + DBScan + "░░" + DBGreen + "╱" + Reset + "  ════════════════════════════════════════════════════════════  " + DBGreen + "│" + Reset + "\n")
 
-	sb.WriteString(DBGreen + "│" + Reset)
-	sb.WriteString(PadRight(line3, 83))
-	sb.WriteString(DBGreen + "│" + Reset + "\n")
-
-	sb.WriteString(DBGreen + "├" + DBScanLine + "─────────────────────────────────────────────────────────────────────────────────" + DBGreen + "┤" + Reset + "\n")
-
-	// Ki gauge (Context)
+	// Stats bars
 	kiColor := DBGreen
 	if data.ContextPercent > 75 {
 		kiColor = DBRed
-	} else if data.ContextPercent > 50 {
-		kiColor = DBYellow
 	}
 
-	line4 := fmt.Sprintf(" %sKI%s %s %s%3d%%%s  %sSTAMINA%s %s %s%3d%%%s %s%s%s  %sENDURE%s %s %s%3d%%%s %s%s%s",
-		DBCyan, Reset,
-		t.generateDBBar(data.ContextPercent, 12, kiColor),
-		kiColor, data.ContextPercent, Reset,
-		DBYellow, Reset,
-		t.generateDBBar(100-data.API5hrPercent, 10, DBYellow),
-		DBYellow, 100-data.API5hrPercent, Reset,
-		DBDark, data.API5hrTimeLeft, Reset,
-		DBOrange, Reset,
-		t.generateDBBar(100-data.API7dayPercent, 10, DBOrange),
-		DBOrange, 100-data.API7dayPercent, Reset,
-		DBDark, data.API7dayTimeLeft, Reset)
+	sb.WriteString(DBGreen + "    │" + Reset + "    " + fmt.Sprintf("%sKI%s %s %s%3d%%%s  %sSTM%s %s %s%3d%%%s  %sEND%s %s %s%3d%%%s",
+		DBCyan, Reset, t.generateDBBar(data.ContextPercent, 10, kiColor), kiColor, data.ContextPercent, Reset,
+		DBYellow, Reset, t.generateDBBar(100-data.API5hrPercent, 8, DBYellow), DBYellow, 100-data.API5hrPercent, Reset,
+		DBOrange, Reset, t.generateDBBar(100-data.API7dayPercent, 8, DBOrange), DBOrange, 100-data.API7dayPercent, Reset))
+	sb.WriteString("  " + DBGreen + "│" + Reset + "\n")
 
-	sb.WriteString(DBGreen + "│" + Reset)
-	sb.WriteString(PadRight(line4, 83))
-	sb.WriteString(DBGreen + "│" + Reset + "\n")
+	// Bottom stats
+	sb.WriteString(DBGreen + "    │" + Reset + fmt.Sprintf("    %sTIME%s %s  %sMSG%s %d  %sZENI%s $%s  %sDAY%s $%s  %sEFF%s %d%%",
+		DBScan, Reset, data.SessionTime,
+		DBCyan, Reset, data.MessageCount,
+		DBYellow, Reset, FormatCost(data.SessionCost),
+		DBOrange, Reset, FormatCost(data.DayCost),
+		DBGreen, Reset, data.CacheHitRate))
+	sb.WriteString("       " + DBGreen + "│" + Reset + "\n")
 
-	// Stats row
-	line5 := fmt.Sprintf(" %sTIME%s %s  %sMSG%s %s%d%s  %sZENI%s %s%s%s  %sDAY%s %s%s%s  %sRATE%s %s%s/h%s  %sFOCUS%s %s%d%%%s",
-		DBGreen, Reset, data.SessionTime,
-		DBCyan, Reset, DBCyan, data.MessageCount, Reset,
-		DBYellow, Reset, DBYellow, FormatCost(data.SessionCost), Reset,
-		DBOrange, Reset, DBOrange, FormatCost(data.DayCost), Reset,
-		DBRed, Reset, DBRed, FormatCost(data.BurnRate), Reset,
-		DBBrightGreen, Reset, DBBrightGreen, data.CacheHitRate, Reset)
-
-	sb.WriteString(DBGreen + "│" + Reset)
-	sb.WriteString(PadRight(line5, 83))
-	sb.WriteString(DBGreen + "│" + Reset + "\n")
-
-	sb.WriteString(DBGreen + "└─────────────────────────────────────────────────────────────────────────────────┘" + Reset + "\n")
+	sb.WriteString(DBGreen + "    ╰──────────────────────────────────────────────────────────────────────────╯" + Reset + "\n")
 
 	return sb.String()
 }
