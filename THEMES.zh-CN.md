@@ -6,7 +6,7 @@
   <img src="assets/intro.gif" alt="Claude Statusline 主题展示" width="750">
 </p>
 
-> 目前提供 **25 种主题**。使用 `./statusline --menu` 预览并选择。
+> 目前提供 **65 种主题**。使用 `./statusline --menu` 预览并选择。
 
 ---
 
@@ -17,6 +17,10 @@
 - [自然 & 美学](#自然--美学)
 - [系统监视器](#系统监视器)
 - [复古 & 游戏](#复古--游戏)
+- [经典动漫致敬](#经典动漫致敬)
+- [吉卜力工作室](#吉卜力工作室)
+- [现代动漫](#现代动漫)
+- [动漫美学](#动漫美学)
 
 ---
 
@@ -162,3 +166,219 @@ NetHack：经典 Roguelike 地牢探索风格
 MUD RPG：经典文字冒险游戏角色状态界面
 
 ![mud_rpg](assets/themes/mud_rpg.png)
+
+---
+
+## 经典动漫致敬
+
+### `eva`
+新世纪福音战士：NERV 界面、同步率与 A.T. 力场
+
+![eva](assets/themes/eva.png)
+
+### `dragonball`
+龙珠：战斗力探测器显示
+
+![dragonball](assets/themes/dragonball.png)
+
+### `onepiece`
+海贼王：海贼悬赏令风格
+
+![onepiece](assets/themes/onepiece.png)
+
+### `naruto`
+火影忍者：忍者卷轴与查克拉系统
+
+![naruto](assets/themes/naruto.png)
+
+### `bleach`
+死神：灵压显示风格
+
+![bleach](assets/themes/bleach.png)
+
+### `aot`
+进击的巨人：调查兵团任务简报
+
+![aot](assets/themes/aot.png)
+
+### `demonslayer`
+鬼灭之刃：呼吸法风格
+
+![demonslayer](assets/themes/demonslayer.png)
+
+### `jujutsu`
+咒术回战：咒力领域风格
+
+![jujutsu](assets/themes/jujutsu.png)
+
+### `mha`
+我的英雄学院：个性分析界面
+
+![mha](assets/themes/mha.png)
+
+### `hxh`
+全职猎人：念能力雷达显示
+
+![hxh](assets/themes/hxh.png)
+
+### `fma`
+钢之炼金术师：炼成阵风格
+
+![fma](assets/themes/fma.png)
+
+### `jojo`
+JoJo 的奇妙冒险：替身能力值显示
+
+![jojo](assets/themes/jojo.png)
+
+### `deathnote`
+死亡笔记：哥特式笔记本风格
+
+![deathnote](assets/themes/deathnote.png)
+
+### `sailormoon`
+美少女战士：魔法变身风格
+
+![sailormoon](assets/themes/sailormoon.png)
+
+### `bebop`
+星际牛仔：爵士黑色赏金猎人风格
+
+![bebop](assets/themes/bebop.png)
+
+### `gits`
+攻壳机动队：电子脑 HUD 界面
+
+![gits](assets/themes/gits.png)
+
+### `akira`
+阿基拉：新东京赛博朋克暴走族风格
+
+![akira](assets/themes/akira.png)
+
+### `gundam`
+高达：机动战士驾驶舱界面
+
+![gundam](assets/themes/gundam.png)
+
+---
+
+## 吉卜力工作室
+
+### `totoro`
+龙猫：森林精灵风格
+
+![totoro](assets/themes/totoro.png)
+
+### `spirited`
+千与千寻：汤屋精灵风格
+
+![spirited](assets/themes/spirited.png)
+
+### `mononoke`
+幽灵公主：森林之神风格
+
+![mononoke](assets/themes/mononoke.png)
+
+### `howl`
+哈尔的移动城堡：蒸汽魔法风格
+
+![howl](assets/themes/howl.png)
+
+### `laputa`
+天空之城：飞行石风格
+
+![laputa](assets/themes/laputa.png)
+
+### `kiki`
+魔女宅急便：魔女风格
+
+![kiki](assets/themes/kiki.png)
+
+### `nausicaa`
+风之谷：腐海风格
+
+![nausicaa](assets/themes/nausicaa.png)
+
+---
+
+## 现代动漫
+
+### `isekai`
+异世界：RPG 状态窗口风格
+
+![isekai](assets/themes/isekai.png)
+
+### `spyfamily`
+间谍过家家：WISE 行动简报风格
+
+![spyfamily](assets/themes/spyfamily.png)
+
+### `chainsaw`
+链锯人：恶魔契约血腥风格
+
+![chainsaw](assets/themes/chainsaw.png)
+
+### `sao`
+刀剑神域：游戏界面风格
+
+![sao](assets/themes/sao.png)
+
+### `rezero`
+Re：从零开始的异世界生活：死亡回归检查点风格
+
+![rezero](assets/themes/rezero.png)
+
+### `tokyoghoul`
+东京喰种：赫子 RC 细胞风格
+
+![tokyoghoul](assets/themes/tokyoghoul.png)
+
+---
+
+## 动漫美学
+
+### `mecha`
+机甲：巨型机器人驾驶舱 HUD 瞄准系统
+
+![mecha](assets/themes/mecha.png)
+
+### `mahou`
+魔法少女：变身闪耀风格
+
+![mahou](assets/themes/mahou.png)
+
+### `shonen`
+少年漫画：动作漫画格与速度线
+
+![shonen](assets/themes/shonen.png)
+
+### `visualnovel`
+视觉小说：对话框风格
+
+![visualnovel](assets/themes/visualnovel.png)
+
+### `chibi`
+Q版：超可爱变形精简风格
+
+![chibi](assets/themes/chibi.png)
+
+### `samurai`
+武士：传统日式毛笔书法风格
+
+![samurai](assets/themes/samurai.png)
+
+### `idol`
+偶像：演唱会舞台荧光棒与星星
+
+![idol](assets/themes/idol.png)
+
+### `school`
+校园：动漫学校黑板风格
+
+![school](assets/themes/school.png)
+
+### `yokai`
+妖怪：神秘日本精灵卷轴风格
+
+![yokai](assets/themes/yokai.png)

@@ -98,7 +98,7 @@ Edit `~/.claude/statusline-go/config.json`:
 
 ### Available Themes
 
-**25 themes** across multiple categories:
+**65 themes** across multiple categories:
 
 | Category | Themes |
 |----------|--------|
