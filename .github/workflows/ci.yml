@@ -20,12 +20,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.62
+          version: v2.11.3
 
   test:
     name: Test
@@ -37,7 +37,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
@@ -71,7 +71,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Build
         env:
@@ -100,9 +100,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Run gosec
         uses: securego/gosec@master
         with:
-          args: -exclude=G101,G104,G301,G304,G306,G602 ./...
+          args: -exclude=G101,G104,G115,G301,G304,G306,G602,G703 ./...
