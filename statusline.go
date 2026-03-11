@@ -327,16 +327,20 @@ func runInteractiveMenu() {
 			break
 		}
 
+		// Handle Enter: single \r or \n (n==1), or \r\n pair (n==2, Windows)
+		if (n == 1 && (buf[0] == 13 || buf[0] == 10)) ||
+			(n == 2 && buf[0] == 13 && buf[1] == 10) {
+			fmt.Print("\033[2J\033[H")
+			saveThemeConfig(themeList[selectedIndex].Name())
+			fmt.Printf("Theme set to: %s\r\n", themeList[selectedIndex].Name())
+			return
+		}
+
 		if n == 1 {
 			switch buf[0] {
 			case 'q', 'Q', 27: // q or Escape
 				fmt.Print("\033[2J\033[H")
 				fmt.Print("Canceled\r\n")
-				return
-			case 13, 10: // Enter
-				fmt.Print("\033[2J\033[H")
-				saveThemeConfig(themeList[selectedIndex].Name())
-				fmt.Printf("Theme set to: %s\r\n", themeList[selectedIndex].Name())
 				return
 			case 'h', 'H': // vim-style left
 				if selectedIndex > 0 {

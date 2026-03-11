@@ -12,11 +12,12 @@ A custom status line utility for Claude Code written in Go. Displays model info,
 # Build the binary
 go build -o statusline statusline.go
 
+# Build on Windows
+go build -o statusline.exe .
+
 # Run (expects JSON input on stdin from Claude Code)
 echo '{"model":{"display_name":"Claude Sonnet 4"},...}' | ./statusline
 ```
-
-No go.mod exists - this is a single-file project using only the Go standard library.
 
 ## Architecture
 
