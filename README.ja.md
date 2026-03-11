@@ -92,9 +92,19 @@ go build -o statusline .
 
 ```json
 {
-  "theme": "classic_framed"
+  "theme": "classic_framed",
+  "usage_api": "haiku_probe"
 }
 ```
+
+#### `usage_api` オプション
+
+| 値 | 説明 |
+|----|------|
+| `"haiku_probe"` | **（デフォルト）** 最小限の Haiku API リクエストを送信し、レスポンスヘッダーからレート制限情報を取得します。OAuth トークンで安定動作します。 |
+| `"oauth_usage"` | 専用の `/api/oauth/usage` エンドポイントを呼び出します。現在ほとんどのユーザーに 429（レート制限）を返します。 |
+
+> **注意：** `haiku_probe` は `x-api-key` ヘッダーに OAuth トークンを使用して `/v1/messages` を呼び出し、`anthropic-ratelimit-unified-*` レスポンスヘッダーを解析します。1回のプローブで約 9 トークン（$0.00001）を消費します。結果は `~/.claude/session-tracker/api-usage-cache.json` に 5 分間キャッシュされます。
 
 ### 利用可能なテーマ
 
@@ -150,6 +160,7 @@ go build -o statusline .
 統計は `~/.claude/session-tracker/` に保存されます：
 - `sessions/` - 個別セッションデータ
 - `stats/` - 日次・週次トークン統計
+- `api-usage-cache.json` - API レート制限キャッシュデータ（5分 TTL）
 
 ## コントリビュート
 
