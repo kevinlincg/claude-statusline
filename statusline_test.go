@@ -35,9 +35,9 @@ func TestFormatModelName(t *testing.T) {
 		{"Claude Opus 4.5", "Opus 4.5"},
 		{"Claude Sonnet 4", "Sonnet 4"},
 		{"Claude Haiku 3.5", "Haiku 3.5"},
-		{"Opus", "Opus 4.5"},
-		{"Sonnet", "Sonnet 4"},
-		{"Haiku", "Haiku 3.5"},
+		{"Opus", "Opus"},
+		{"Sonnet", "Sonnet"},
+		{"Haiku", "Haiku"},
 		{"Unknown", "Unknown"},
 	}
 

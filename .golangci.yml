@@ -1,43 +1,38 @@
+version: "2"
+
 run:
   timeout: 5m
-  modules-download-mode: readonly
 
 linters:
+  default: none
   enable:
     - gosimple
     - govet
     - ineffassign
     - staticcheck
     - gosec
-    - gofmt
-    - goimports
-    - misspell
     - unconvert
     - unused
-  disable:
-    - errcheck  # This utility uses best-effort error handling by design
+  settings:
+    gosec:
+      excludes:
+        - G101 # False positive: color codes look like credentials
+        - G104 # Audit errors not checked (allow for some error ignoring)
+        - G304 # File path provided as taint input (allow file reading)
+        - G306 # WriteFile with 0644 is fine for user config files
 
-linters-settings:
-
-  gosec:
-    excludes:
-      - G101 # False positive: color codes look like credentials
-      - G104 # Audit errors not checked (allow for some error ignoring)
-      - G304 # File path provided as taint input (allow file reading)
-      - G306 # WriteFile with 0644 is fine for user config files
-
-  goimports:
-    local-prefixes: statusline
-
-  misspell:
-    locale: US
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: statusline
 
 issues:
   exclude-rules:
-    # Allow unused parameters in test files
     - path: _test\.go
       linters:
         - unused
-
   max-issues-per-linter: 50
   max-same-issues: 10
