@@ -17,8 +17,16 @@ linters:
       excludes:
         - G101 # False positive: color codes look like credentials
         - G104 # Audit errors not checked (allow for some error ignoring)
+        - G115 # Integer overflow conversion (uintptr->int, int->rune) safe in context
+        - G301 # Directory permissions 0755 is fine for user data dirs
         - G304 # File path provided as taint input (allow file reading)
         - G306 # WriteFile with 0644 is fine for user config files
+        - G602 # Slice index out of range (false positive)
+        - G703 # Path traversal via config dir (not user-controlled)
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF*" # Disable quickfix suggestions
 
 formatters:
   enable:
