@@ -88,21 +88,32 @@ go build -o statusline .
 
 ### 手動設定
 
-編輯 `~/.claude/statusline-go/config.json`：
+編輯 statusline 執行檔旁的 `config.json`：
 
 ```json
 {
-  "theme": "classic_framed"
+  "theme": "classic_framed",
+  "usage_api": "haiku_probe"
 }
 ```
 
+#### `usage_api` 選項
+
+| 值 | 說明 |
+|----|------|
+| `"haiku_probe"` | **（預設）** 發送一個最小的 Haiku API 請求，從回應 headers 讀取速率限制資訊。可搭配 OAuth token 穩定運作。 |
+| `"oauth_usage"` | 呼叫專用的 `/api/oauth/usage` 端點。目前對大多數使用者回傳 429（速率限制）。 |
+
+> **備註：** `haiku_probe` 方法使用 `x-api-key` header 搭配 OAuth token 呼叫 `/v1/messages`，再解析 `anthropic-ratelimit-unified-*` 回應 headers。每次探測消耗約 9 個 token（$0.00001）。結果會快取 5 分鐘於 `~/.claude/session-tracker/api-usage-cache.json`。
+
 ### 可用主題
 
-目前提供 **65 種主題**：
+目前提供 **69 種主題**：
 
 | 分類 | 主題 |
 |------|------|
 | 經典 & 簡約 | `classic`, `classic_framed`, `minimal`, `compact`, `boxed`, `zen` |
+| 單行 & 膠囊 | `oneline_clean`, `oneline_pills`, `oneline_powerline`, `twoline_pills` |
 | 科幻 & 賽博龐克 | `hud`, `cyberpunk`, `synthwave`, `matrix`, `glitch` |
 | 自然 & 美學 | `ocean`, `steampunk` |
 | 系統監視器 | `htop`, `btop`, `gtop`, `stui` |
@@ -149,6 +160,7 @@ go build -o statusline .
 統計資料儲存於 `~/.claude/session-tracker/`：
 - `sessions/` - 個別 Session 資料
 - `stats/` - 每日與每週 Token 統計
+- `api-usage-cache.json` - API 速率限制快取資料（5 分鐘 TTL）
 
 ## 貢獻
 

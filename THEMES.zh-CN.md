@@ -6,13 +6,14 @@
   <img src="assets/intro.gif" alt="Claude Statusline 主题展示" width="750">
 </p>
 
-> 目前提供 **65 种主题**。使用 `./statusline --menu` 预览并选择。
+> 目前提供 **69 种主题**。使用 `./statusline --menu` 预览并选择。
 
 ---
 
 ## 目录
 
 - [经典 & 简约](#经典--简约)
+- [单行 & 胶囊](#单行--胶囊)
 - [科幻 & 赛博朋克](#科幻--赛博朋克)
 - [自然 & 美学](#自然--美学)
 - [系统监视器](#系统监视器)
@@ -55,6 +56,22 @@
 禅风：极简留白，宁静淡雅
 
 ![zen](assets/themes/zen.png)
+
+---
+
+## 单行 & 胶囊
+
+### `oneline_clean`
+简洁单行：最少分隔符，显示必要信息
+
+### `oneline_pills`
+胶囊单行：圆角标签搭配迷你进度条
+
+### `oneline_powerline`
+Powerline 单行：箭头分隔区段搭配 Powerline 符号
+
+### `twoline_pills`
+胶囊双行：第一行身份与工作区，第二行 API 限制与成本
 
 ---
 

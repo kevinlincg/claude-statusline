@@ -11,11 +11,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/kevinlincg/claude-statusline/themes"
+	"golang.org/x/term"
 )
 
 // Version information (set via ldflags during build)
@@ -66,7 +68,8 @@ type Input struct {
 
 // Config structure
 type Config struct {
-	Theme string `json:"theme"`
+	Theme    string `json:"theme"`
+	UsageAPI string `json:"usage_api,omitempty"` // "haiku_probe" (default) or "oauth_usage"
 }
 
 // Session data structure
@@ -129,12 +132,11 @@ type SessionUsageResult struct {
 	Duration         time.Duration
 }
 
-// Cache
-var (
-	apiUsageCache   *APIUsage
-	apiUsageExpires time.Time
-	cacheMutex      sync.RWMutex
-)
+// APIUsageCache wraps APIUsage with a timestamp for file-based caching.
+type APIUsageCache struct {
+	Usage    APIUsage  `json:"usage"`
+	CachedAt time.Time `json:"cached_at"`
+}
 
 func main() {
 	// Command line arguments
@@ -366,28 +368,13 @@ func runInteractiveMenu() {
 }
 
 // Terminal raw mode functions
-func makeRaw(fd uintptr) ([]byte, error) {
-	// Use stty to set raw mode
-	cmd := exec.Command("stty", "-F", "/dev/stdin", "raw", "-echo")
-	cmd.Stdin = os.Stdin
-	if err := cmd.Run(); err != nil {
-		// macOS uses different syntax
-		cmd = exec.Command("stty", "raw", "-echo")
-		cmd.Stdin = os.Stdin
-		cmd.Run()
-	}
-	return nil, nil
+func makeRaw(fd uintptr) (*term.State, error) {
+	return term.MakeRaw(int(fd))
 }
 
-func restore(fd uintptr, oldState []byte) {
-	// Restore terminal settings
-	cmd := exec.Command("stty", "-F", "/dev/stdin", "sane")
-	cmd.Stdin = os.Stdin
-	if err := cmd.Run(); err != nil {
-		// macOS
-		cmd = exec.Command("stty", "sane")
-		cmd.Stdin = os.Stdin
-		cmd.Run()
+func restore(fd uintptr, oldState *term.State) {
+	if oldState != nil {
+		term.Restore(int(fd), oldState)
 	}
 }
 
@@ -443,36 +430,69 @@ func saveThemeConfig(themeName string) {
 		return
 	}
 
-	homeDir, _ := os.UserHomeDir()
-	configFile := filepath.Join(homeDir, ".claude", "statusline-go", "config.json")
+	configFile := getConfigPath()
+	os.MkdirAll(filepath.Dir(configFile), 0755)
 
-	config := Config{Theme: themeName}
+	config := loadConfig()
+	config.Theme = themeName
 	data, _ := json.MarshalIndent(config, "", "  ")
 	os.WriteFile(configFile, data, 0644)
 
 	fmt.Printf("Theme set to: %s\n", themeName)
 }
 
-// loadThemeConfig loads theme configuration
-func loadThemeConfig() string {
-	homeDir, _ := os.UserHomeDir()
-	configFile := filepath.Join(homeDir, ".claude", "statusline-go", "config.json")
-
+// loadConfig loads the full configuration from file.
+func loadConfig() Config {
+	configFile := getConfigPath()
 	data, err := os.ReadFile(configFile)
 	if err != nil {
-		return "classic_framed" // Default theme
+		return Config{}
 	}
-
 	var config Config
-	if err := json.Unmarshal(data, &config); err != nil {
-		return "classic_framed"
-	}
+	json.Unmarshal(data, &config)
+	return config
+}
 
+// loadThemeConfig loads theme configuration
+func loadThemeConfig() string {
+	config := loadConfig()
 	if config.Theme == "" {
 		return "classic_framed"
 	}
-
 	return config.Theme
+}
+
+// getConfigPath returns the config file path
+// Priority: XDG config dir > binary-adjacent (migration fallback)
+func getConfigPath() string {
+	// 1. XDG / ~/.config location
+	configDir := os.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			configDir = filepath.Join(homeDir, ".config")
+		}
+	}
+	if configDir != "" {
+		xdgPath := filepath.Join(configDir, "claude-statusline", "config.json")
+		if _, err := os.Stat(xdgPath); err == nil {
+			return xdgPath
+		}
+		// Check binary-adjacent for migration
+		exe, err := os.Executable()
+		if err == nil {
+			exe, _ = filepath.EvalSymlinks(exe)
+			adjPath := filepath.Join(filepath.Dir(exe), "config.json")
+			if _, err := os.Stat(adjPath); err == nil {
+				return adjPath
+			}
+		}
+		// Default to XDG path (will be created on first save)
+		return xdgPath
+	}
+	// Ultimate fallback
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".config", "claude-statusline", "config.json")
 }
 
 // collectData collects all data
@@ -699,22 +719,102 @@ func getOAuthToken() string {
 	return creds.ClaudeAiOauth.AccessToken
 }
 
-// fetchAPIUsage fetches API usage
+// apiUsageCachePath returns the file path for the API usage cache.
+func apiUsageCachePath() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".claude", "session-tracker", "api-usage-cache.json")
+}
+
+// fetchAPIUsage fetches API usage using the configured method.
+// Dispatches to haiku probe or oauth usage endpoint based on config.usage_api.
+// Results are cached to a file so that separate process invocations share the same cache.
 func fetchAPIUsage() *APIUsage {
-	cacheMutex.RLock()
-	if apiUsageCache != nil && time.Now().Before(apiUsageExpires) {
-		result := apiUsageCache
-		cacheMutex.RUnlock()
-		return result
+	cachePath := apiUsageCachePath()
+
+	// Try file-based cache first
+	if data, err := os.ReadFile(cachePath); err == nil {
+		var cached APIUsageCache
+		if err := json.Unmarshal(data, &cached); err == nil {
+			if time.Since(cached.CachedAt) < 5*time.Minute {
+				return &cached.Usage
+			}
+		}
 	}
-	cacheMutex.RUnlock()
 
 	token := getOAuthToken()
 	if token == "" {
 		return nil
 	}
 
-	client := &http.Client{Timeout: 3 * time.Second}
+	config := loadConfig()
+	var usage *APIUsage
+	if config.UsageAPI == "oauth_usage" {
+		usage = fetchViaOAuthUsage(token)
+	} else {
+		usage = fetchViaHaikuProbe(token)
+	}
+
+	if usage == nil {
+		return nil
+	}
+
+	// Write to file cache
+	cached := APIUsageCache{Usage: *usage, CachedAt: time.Now()}
+	if data, err := json.Marshal(cached); err == nil {
+		os.MkdirAll(filepath.Dir(cachePath), 0755)
+		os.WriteFile(cachePath, data, 0644)
+	}
+
+	return usage
+}
+
+// fetchViaHaikuProbe sends a minimal Haiku request and reads rate limit headers.
+func fetchViaHaikuProbe(token string) *APIUsage {
+	client := &http.Client{Timeout: 5 * time.Second}
+	body := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`
+	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", strings.NewReader(body))
+	if err != nil {
+		return nil
+	}
+
+	req.Header.Set("x-api-key", token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+
+	usage := APIUsage{}
+	if v := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			usage.FiveHour.Utilization = f * 100 // header is 0.0-1.0, convert to percent
+		}
+	}
+	if v := resp.Header.Get("anthropic-ratelimit-unified-5h-reset"); v != "" {
+		usage.FiveHour.ResetsAt = v
+	}
+	if v := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			usage.SevenDay.Utilization = f * 100
+		}
+	}
+	if v := resp.Header.Get("anthropic-ratelimit-unified-7d-reset"); v != "" {
+		usage.SevenDay.ResetsAt = v
+	}
+
+	if usage.FiveHour.ResetsAt == "" && usage.SevenDay.ResetsAt == "" {
+		return nil
+	}
+	return &usage
+}
+
+// fetchViaOAuthUsage calls the dedicated /api/oauth/usage endpoint.
+func fetchViaOAuthUsage(token string) *APIUsage {
+	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", "https://api.anthropic.com/api/oauth/usage", nil)
 	if err != nil {
 		return nil
@@ -744,11 +844,9 @@ func fetchAPIUsage() *APIUsage {
 		return nil
 	}
 
-	cacheMutex.Lock()
-	apiUsageCache = &usage
-	apiUsageExpires = time.Now().Add(30 * time.Second)
-	cacheMutex.Unlock()
-
+	if usage.FiveHour.ResetsAt == "" && usage.SevenDay.ResetsAt == "" {
+		return nil
+	}
 	return &usage
 }
 
@@ -1254,9 +1352,14 @@ func calculateBurnRateValue(dailyStats UsageStats) float64 {
 }
 
 // formatTimeLeftShort formats time left in short form
-func formatTimeLeftShort(isoTime string) string {
-	t, err := time.Parse(time.RFC3339, isoTime)
-	if err != nil {
+func formatTimeLeftShort(timeStr string) string {
+	var t time.Time
+	// Try Unix epoch seconds first (from rate limit headers), then ISO 8601 (from usage API)
+	if epoch, err := strconv.ParseInt(timeStr, 10, 64); err == nil {
+		t = time.Unix(epoch, 0)
+	} else if parsed, err := time.Parse(time.RFC3339, timeStr); err == nil {
+		t = parsed
+	} else {
 		return "?"
 	}
 

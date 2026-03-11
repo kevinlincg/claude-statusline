@@ -22,7 +22,7 @@ const (
 	ColorPurple = "\033[38;2;186;133;217m"
 	ColorBlue   = "\033[38;2;100;149;237m"
 	ColorRed    = "\033[38;2;220;88;88m"
-	ColorDim    = "\033[38;2;128;128;128m"
+	ColorDim    = "\033[38;2;170;170;170m"
 	ColorYellow = "\033[38;2;255;215;0m"
 
 	// Bright colors

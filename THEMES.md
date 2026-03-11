@@ -6,13 +6,14 @@
   <img src="assets/intro.gif" alt="Claude Statusline Theme Demo" width="750">
 </p>
 
-> **65 themes** available. Use `./statusline --menu` to preview and select.
+> **69 themes** available. Use `./statusline --menu` to preview and select.
 
 ---
 
 ## Table of Contents
 
 - [Classic & Minimal](#classic--minimal)
+- [One-line & Pills](#one-line--pills)
 - [Sci-Fi & Cyberpunk](#sci-fi--cyberpunk)
 - [Nature & Aesthetic](#nature--aesthetic)
 - [System Monitor](#system-monitor)
@@ -55,6 +56,22 @@ Full border frame, symmetrical sections
 Minimalist whitespace, calm and elegant
 
 ![zen](assets/themes/zen.png)
+
+---
+
+## One-line & Pills
+
+### `oneline_clean`
+Single-line clean: minimal separators with essential info
+
+### `oneline_pills`
+Single-line pills: rounded badge segments with mini progress bars
+
+### `oneline_powerline`
+Single-line powerline: arrow-separated segments with powerline symbols
+
+### `twoline_pills`
+Two-line pills: line 1 identity + workspace, line 2 API limits + session stats
 
 ---
 
