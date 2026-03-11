@@ -27,6 +27,7 @@ linters:
       checks:
         - "all"
         - "-QF*" # Disable quickfix suggestions
+        - "-ST1000" # Package comments not needed for theme files
 
 formatters:
   enable:
