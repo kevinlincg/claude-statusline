@@ -64,6 +64,24 @@ type Input struct {
 		CurrentDir string `json:"current_dir"`
 	} `json:"workspace"`
 	TranscriptPath string `json:"transcript_path,omitempty"`
+	Cost           struct {
+		TotalCostUSD      float64 `json:"total_cost_usd"`
+		TotalDurationMs   int64   `json:"total_duration_ms"`
+		TotalLinesAdded   int     `json:"total_lines_added"`
+		TotalLinesRemoved int     `json:"total_lines_removed"`
+	} `json:"cost"`
+	ContextWindow struct {
+		TotalInputTokens  int64   `json:"total_input_tokens"`
+		TotalOutputTokens int64   `json:"total_output_tokens"`
+		ContextWindowSize int     `json:"context_window_size"`
+		UsedPercentage    float64 `json:"used_percentage"`
+		CurrentUsage      *struct {
+			InputTokens              int64 `json:"input_tokens"`
+			OutputTokens             int64 `json:"output_tokens"`
+			CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
+			CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
+		} `json:"current_usage"`
+	} `json:"context_window"`
 }
 
 // Config structure
@@ -574,14 +592,54 @@ func collectData(input Input, modelType string) themes.StatusData {
 		}
 	}
 
-	// Calculate Context
+	// Calculate Context: prefer input JSON data, fall back to transcript parsing
 	contextUsed := 0
 	contextPercent := 0
-	if input.TranscriptPath != "" {
-		contextUsed = calculateContextUsage(input.TranscriptPath)
-		contextPercent = int(float64(contextUsed) * 100.0 / 200000.0)
+	if input.ContextWindow.UsedPercentage > 0 || input.ContextWindow.CurrentUsage != nil {
+		// Use built-in context data from Claude Code JSON input
+		contextPercent = int(input.ContextWindow.UsedPercentage)
 		if contextPercent > 100 {
 			contextPercent = 100
+		}
+		if input.ContextWindow.CurrentUsage != nil {
+			contextUsed = int(input.ContextWindow.CurrentUsage.InputTokens +
+				input.ContextWindow.CurrentUsage.CacheCreationInputTokens +
+				input.ContextWindow.CurrentUsage.CacheReadInputTokens)
+		}
+	} else if input.TranscriptPath != "" {
+		contextUsed = calculateContextUsage(input.TranscriptPath)
+		ctxWindowSize := 200000
+		if input.ContextWindow.ContextWindowSize > 0 {
+			ctxWindowSize = input.ContextWindow.ContextWindowSize
+		}
+		contextPercent = int(float64(contextUsed) * 100.0 / float64(ctxWindowSize))
+		if contextPercent > 100 {
+			contextPercent = 100
+		}
+	}
+
+	// Token count: prefer input JSON cumulative totals, fall back to transcript parsing
+	tokenCount := sessionUsage.InputTokens + sessionUsage.OutputTokens + sessionUsage.CacheReadTokens + sessionUsage.CacheWriteTokens
+	if tokenCount == 0 && (input.ContextWindow.TotalInputTokens > 0 || input.ContextWindow.TotalOutputTokens > 0) {
+		tokenCount = input.ContextWindow.TotalInputTokens + input.ContextWindow.TotalOutputTokens
+	}
+
+	// Session cost: prefer input JSON cost, fall back to transcript-calculated cost
+	sessionCost := sessionUsage.Cost
+	if sessionCost == 0 && input.Cost.TotalCostUSD > 0 {
+		sessionCost = input.Cost.TotalCostUSD
+	}
+
+	// Cache hit rate: prefer transcript data (has detailed breakdown), fall back to current_usage
+	cacheHitRate := 0
+	totalInput := sessionUsage.InputTokens + sessionUsage.CacheReadTokens
+	if totalInput > 0 {
+		cacheHitRate = int(float64(sessionUsage.CacheReadTokens) * 100.0 / float64(totalInput))
+	} else if input.ContextWindow.CurrentUsage != nil {
+		cu := input.ContextWindow.CurrentUsage
+		totalInputCU := cu.InputTokens + cu.CacheReadInputTokens
+		if totalInputCU > 0 {
+			cacheHitRate = int(float64(cu.CacheReadInputTokens) * 100.0 / float64(totalInputCU))
 		}
 	}
 
@@ -607,13 +665,6 @@ func collectData(input Input, modelType string) themes.StatusData {
 		api7dayTimeLeft = formatTimeLeftShort(apiUsage.SevenDay.ResetsAt)
 	}
 
-	// Calculate cache hit rate
-	cacheHitRate := 0
-	totalInput := sessionUsage.InputTokens + sessionUsage.CacheReadTokens
-	if totalInput > 0 {
-		cacheHitRate = int(float64(sessionUsage.CacheReadTokens) * 100.0 / float64(totalInput))
-	}
-
 	return themes.StatusData{
 		ModelName:       formatModelName(input.Model.DisplayName),
 		ModelType:       modelType,
@@ -623,11 +674,11 @@ func collectData(input Input, modelType string) themes.StatusData {
 		GitBranch:       gitInfo.Branch,
 		GitStaged:       gitInfo.StagedCount,
 		GitDirty:        gitInfo.DirtyCount,
-		TokenCount:      sessionUsage.InputTokens + sessionUsage.OutputTokens + sessionUsage.CacheReadTokens + sessionUsage.CacheWriteTokens,
+		TokenCount:      tokenCount,
 		MessageCount:    sessionUsage.MessageCount,
 		SessionTime:     totalHours,
 		CacheHitRate:    cacheHitRate,
-		SessionCost:     sessionUsage.Cost,
+		SessionCost:     sessionCost,
 		DayCost:         dailyStats.TotalCost,
 		MonthCost:       monthlyStats.TotalCost,
 		WeekCost:        weeklyStats.TotalCost,
@@ -781,7 +832,7 @@ func fetchViaHaikuProbe(token string) *APIUsage {
 		return nil
 	}
 
-	req.Header.Set("x-api-key", token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
 
