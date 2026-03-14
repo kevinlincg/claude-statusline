@@ -64,12 +64,18 @@ type Input struct {
 		CurrentDir string `json:"current_dir"`
 	} `json:"workspace"`
 	TranscriptPath string `json:"transcript_path,omitempty"`
+	ContextWindow  struct {
+		ContextWindowSize int `json:"context_window_size"`
+		TotalInputTokens  int `json:"total_input_tokens"`
+		TotalOutputTokens int `json:"total_output_tokens"`
+		UsedPercentage    int `json:"used_percentage"`
+	} `json:"context_window"`
 }
 
 // Config structure
 type Config struct {
 	Theme    string `json:"theme"`
-	UsageAPI string `json:"usage_api,omitempty"` // "haiku_probe" (default) or "oauth_usage"
+	UsageAPI string `json:"usage_api,omitempty"` // "oauth_usage" (default) or "haiku_probe"
 }
 
 // Session data structure
@@ -570,16 +576,9 @@ func collectData(input Input, modelType string) themes.StatusData {
 		}
 	}
 
-	// Calculate Context
-	contextUsed := 0
-	contextPercent := 0
-	if input.TranscriptPath != "" {
-		contextUsed = calculateContextUsage(input.TranscriptPath)
-		contextPercent = int(float64(contextUsed) * 100.0 / 200000.0)
-		if contextPercent > 100 {
-			contextPercent = 100
-		}
-	}
+	// Context from Claude Code's JSON input (supports both 200K and 1M windows)
+	contextUsed := input.ContextWindow.TotalInputTokens + input.ContextWindow.TotalOutputTokens
+	contextPercent := input.ContextWindow.UsedPercentage
 
 	// Get monthly stats
 	monthlyStats := getMonthlyStats()
@@ -748,10 +747,10 @@ func fetchAPIUsage() *APIUsage {
 
 	config := loadConfig()
 	var usage *APIUsage
-	if config.UsageAPI == "oauth_usage" {
-		usage = fetchViaOAuthUsage(token)
-	} else {
+	if config.UsageAPI == "haiku_probe" {
 		usage = fetchViaHaikuProbe(token)
+	} else {
+		usage = fetchViaOAuthUsage(token)
 	}
 
 	if usage == nil {
@@ -777,7 +776,7 @@ func fetchViaHaikuProbe(token string) *APIUsage {
 		return nil
 	}
 
-	req.Header.Set("x-api-key", token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
 
@@ -1094,71 +1093,6 @@ func calculateCost(usage SessionUsageResult, modelType string) float64 {
 	return cost
 }
 
-// calculateContextUsage calculates context usage
-func calculateContextUsage(transcriptPath string) int {
-	file, err := os.Open(transcriptPath)
-	if err != nil {
-		return 0
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	const maxScanTokenSize = 1024 * 1024
-	buf := make([]byte, 0, maxScanTokenSize)
-	scanner.Buffer(buf, maxScanTokenSize)
-
-	allLines := make([]string, 0)
-	for scanner.Scan() {
-		allLines = append(allLines, scanner.Text())
-	}
-
-	start := len(allLines) - 100
-	if start < 0 {
-		start = 0
-	}
-	lines := allLines[start:]
-
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := lines[i]
-
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
-		var data map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &data); err != nil {
-			continue
-		}
-
-		if sidechain, ok := data["isSidechain"]; ok {
-			if isSide, ok := sidechain.(bool); ok && isSide {
-				continue
-			}
-		}
-
-		if message, ok := data["message"].(map[string]interface{}); ok {
-			if usage, ok := message["usage"].(map[string]interface{}); ok {
-				var total float64
-
-				if input, ok := usage["input_tokens"].(float64); ok {
-					total += input
-				}
-				if cacheRead, ok := usage["cache_read_input_tokens"].(float64); ok {
-					total += cacheRead
-				}
-				if cacheCreation, ok := usage["cache_creation_input_tokens"].(float64); ok {
-					total += cacheCreation
-				}
-
-				if total > 0 {
-					return int(total)
-				}
-			}
-		}
-	}
-
-	return 0
-}
 
 // getDailyStats gets daily stats
 func getDailyStats() UsageStats {
