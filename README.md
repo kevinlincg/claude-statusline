@@ -93,7 +93,7 @@ Edit the `config.json` file located next to the `statusline` binary:
 ```json
 {
   "theme": "classic_framed",
-  "usage_api": "haiku_probe"
+  "usage_api": "oauth_usage"
 }
 ```
 
@@ -101,10 +101,10 @@ Edit the `config.json` file located next to the `statusline` binary:
 
 | Value | Description |
 |-------|-------------|
-| `"haiku_probe"` | **(default)** Sends a minimal Haiku API request and reads rate limit info from response headers. Works reliably with OAuth tokens. |
-| `"oauth_usage"` | Calls the dedicated `/api/oauth/usage` endpoint. Currently returns 429 (rate limited) for most users. |
+| `"oauth_usage"` | **(default)** Calls the `/api/oauth/usage` endpoint. Recommended for all users. |
+| `"haiku_probe"` | Sends a minimal Haiku API request and reads rate limit info from response headers. Currently broken due to OAuth authentication not being supported on `/v1/messages`. |
 
-> **Note:** The `haiku_probe` method uses `x-api-key` header with your OAuth token to call `/v1/messages`, then parses the `anthropic-ratelimit-unified-*` response headers. Each probe costs ~9 tokens ($0.00001). Results are cached for 5 minutes at `~/.claude/session-tracker/api-usage-cache.json`.
+> **Note:** Results are cached for 5 minutes at `~/.claude/session-tracker/api-usage-cache.json`.
 
 ### Available Themes
 

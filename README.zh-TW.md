@@ -93,7 +93,7 @@ go build -o statusline .
 ```json
 {
   "theme": "classic_framed",
-  "usage_api": "haiku_probe"
+  "usage_api": "oauth_usage"
 }
 ```
 
@@ -101,10 +101,10 @@ go build -o statusline .
 
 | 值 | 說明 |
 |----|------|
-| `"haiku_probe"` | **（預設）** 發送一個最小的 Haiku API 請求，從回應 headers 讀取速率限制資訊。可搭配 OAuth token 穩定運作。 |
-| `"oauth_usage"` | 呼叫專用的 `/api/oauth/usage` 端點。目前對大多數使用者回傳 429（速率限制）。 |
+| `"oauth_usage"` | **（預設）** 呼叫 `/api/oauth/usage` 端點。建議所有使用者使用。 |
+| `"haiku_probe"` | 發送一個最小的 Haiku API 請求，從回應 headers 讀取速率限制資訊。目前因 `/v1/messages` 不支援 OAuth 認證而無法使用。 |
 
-> **備註：** `haiku_probe` 方法使用 `x-api-key` header 搭配 OAuth token 呼叫 `/v1/messages`，再解析 `anthropic-ratelimit-unified-*` 回應 headers。每次探測消耗約 9 個 token（$0.00001）。結果會快取 5 分鐘於 `~/.claude/session-tracker/api-usage-cache.json`。
+> **備註：** 結果會快取 5 分鐘於 `~/.claude/session-tracker/api-usage-cache.json`。
 
 ### 可用主題
 
