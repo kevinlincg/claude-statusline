@@ -1097,7 +1097,6 @@ func calculateCost(usage SessionUsageResult, modelType string) float64 {
 	return cost
 }
 
-
 // getDailyStats gets daily stats
 func getDailyStats() UsageStats {
 	homeDir, _ := os.UserHomeDir()
