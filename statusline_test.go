@@ -316,6 +316,186 @@ func TestFormatProjectPathHome(t *testing.T) {
 	}
 }
 
+func TestGetModelTypeFromInput(t *testing.T) {
+	mk := func(id, display string) Input {
+		var in Input
+		in.Model.ID = id
+		in.Model.DisplayName = display
+		return in
+	}
+
+	tests := []struct {
+		name string
+		in   Input
+		want string
+	}{
+		{"id opus 4.8", mk("claude-opus-4-8", "Whatever"), "Opus"},
+		{"id opus fast", mk("claude-opus-4-8-fast", "Opus 4.8"), "Opus"},
+		{"id sonnet", mk("claude-sonnet-4-6", "x"), "Sonnet"},
+		{"id haiku", mk("claude-haiku-4-5", "x"), "Haiku"},
+		{"no id falls back to display name", mk("", "Claude Opus 4.8"), "Opus"},
+		{"unknown id falls back to display name", mk("gpt-9", "Claude Haiku 4.5"), "Haiku"},
+		{"both unknown defaults to Sonnet", mk("gpt-9", "Mystery"), "Sonnet"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getModelTypeFromInput(tt.in); got != tt.want {
+				t.Errorf("getModelTypeFromInput(%+v) = %q, want %q", tt.in.Model, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsFastMode(t *testing.T) {
+	mk := func(id, display string) Input {
+		var in Input
+		in.Model.ID = id
+		in.Model.DisplayName = display
+		return in
+	}
+
+	tests := []struct {
+		name string
+		in   Input
+		want bool
+	}{
+		{"id suffix fast", mk("claude-opus-4-8-fast", "Opus 4.8"), true},
+		{"display contains Fast", mk("claude-opus-4-8", "Opus 4.8 (Fast)"), true},
+		{"standard", mk("claude-opus-4-8", "Opus 4.8"), false},
+		{"empty", mk("", ""), false},
+		{"substring false positive in display", mk("claude-sonnet-4-6", "Steadfast Sonnet"), false},
+		{"substring false positive in id", mk("claude-fastpath-1", "x"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isFastMode(tt.in); got != tt.want {
+				t.Errorf("isFastMode(%+v) = %v, want %v", tt.in.Model, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCalculateCostModeFast(t *testing.T) {
+	usage := SessionUsageResult{InputTokens: 1000000, OutputTokens: 1000000}
+	std := calculateCostMode(usage, "Opus", false)
+	fast := calculateCostMode(usage, "Opus", true)
+
+	// Opus standard: input $5 + output $25 per 1M = $30.
+	if std < 29.9 || std > 30.1 {
+		t.Errorf("standard Opus cost = %v, want ~30", std)
+	}
+	// Fast mode is ~2x standard.
+	if fast < 2*std-0.01 || fast > 2*std+0.01 {
+		t.Errorf("fast cost = %v, want ~2x standard (%v)", fast, 2*std)
+	}
+	// calculateCost (2-arg) must equal the non-fast path.
+	if calculateCost(usage, "Opus") != std {
+		t.Errorf("calculateCost != calculateCostMode(...false)")
+	}
+}
+
+func TestApplyCostDelta(t *testing.T) {
+	t.Run("monotonic rises accumulate once", func(t *testing.T) {
+		var s UsageStats
+		applyCostDelta(&s, "sess", 1.0)
+		applyCostDelta(&s, "sess", 1.0) // same render again — no double count
+		applyCostDelta(&s, "sess", 2.5) // rose by 1.5
+		if s.TotalCost != 2.5 {
+			t.Errorf("TotalCost = %v, want 2.5", s.TotalCost)
+		}
+		if s.SessionCosts["sess"] != 2.5 {
+			t.Errorf("baseline = %v, want 2.5", s.SessionCosts["sess"])
+		}
+	})
+
+	t.Run("two sessions sum independently", func(t *testing.T) {
+		var s UsageStats
+		applyCostDelta(&s, "a", 3.0)
+		applyCostDelta(&s, "b", 4.0)
+		applyCostDelta(&s, "a", 5.0) // a rose by 2
+		if s.TotalCost != 9.0 {      // 3 + 4 + 2
+			t.Errorf("TotalCost = %v, want 9.0", s.TotalCost)
+		}
+	})
+
+	t.Run("lower incoming value is ignored, no corruption", func(t *testing.T) {
+		var s UsageStats
+		applyCostDelta(&s, "sess", 10.0) // transcript over-estimate
+		applyCostDelta(&s, "sess", 6.0)  // authoritative lands lower — ignored
+		if s.TotalCost != 10.0 {
+			t.Errorf("TotalCost = %v, want 10.0 (no decrease)", s.TotalCost)
+		}
+		// Subsequent climb above the baseline resumes counting from it.
+		applyCostDelta(&s, "sess", 12.0) // rose by 2 over the 10 baseline
+		if s.TotalCost != 12.0 {
+			t.Errorf("TotalCost = %v, want 12.0", s.TotalCost)
+		}
+	})
+
+	t.Run("nil map is initialized", func(t *testing.T) {
+		s := UsageStats{} // SessionCosts nil
+		applyCostDelta(&s, "sess", 1.0)
+		if s.SessionCosts == nil || s.SessionCosts["sess"] != 1.0 {
+			t.Errorf("nil map not handled: %+v", s.SessionCosts)
+		}
+	})
+}
+
+func TestFormatCCVersion(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"", ""},
+		{"2.1.90", "v2.1.90"},
+		{"v2.1.90", "v2.1.90"},
+		{"  2.1.158  ", "v2.1.158"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			if got := formatCCVersion(tt.in); got != tt.want {
+				t.Errorf("formatCCVersion(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestInputJSONCostAndModel guards the json tags for the cost/model.id/version
+// fields that P1+P2 newly consume.
+func TestInputJSONCostAndModel(t *testing.T) {
+	payload := `{
+		"model": {"display_name": "Opus 4.8", "id": "claude-opus-4-8-fast"},
+		"version": "2.1.200",
+		"cost": {"total_cost_usd": 4.37, "total_lines_added": 156, "total_lines_removed": 23},
+		"session_id": "abc"
+	}`
+
+	var in Input
+	if err := json.Unmarshal([]byte(payload), &in); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+	if in.Model.ID != "claude-opus-4-8-fast" {
+		t.Errorf("model.id = %q", in.Model.ID)
+	}
+	if in.Version != "2.1.200" {
+		t.Errorf("version = %q", in.Version)
+	}
+	if in.Cost.TotalCostUSD != 4.37 {
+		t.Errorf("cost.total_cost_usd = %v", in.Cost.TotalCostUSD)
+	}
+	if in.Cost.TotalLinesAdded != 156 || in.Cost.TotalLinesRemoved != 23 {
+		t.Errorf("lines = +%d/-%d", in.Cost.TotalLinesAdded, in.Cost.TotalLinesRemoved)
+	}
+	if !isFastMode(in) {
+		t.Error("isFastMode(decoded) = false, want true")
+	}
+	if getModelTypeFromInput(in) != "Opus" {
+		t.Errorf("getModelTypeFromInput(decoded) = %q, want Opus", getModelTypeFromInput(in))
+	}
+}
+
 func TestVersionVariables(t *testing.T) {
 	// Verify version variables exist and have default values
 	if Version == "" {

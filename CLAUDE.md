@@ -48,7 +48,7 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 ```
 
 **Key data structures**:
-- `Input`: Configuration from Claude Code (model, session ID, workspace, transcript path, context_window, rate_limits)
+- `Input`: Configuration from Claude Code (model `display_name`/`id`, session ID, workspace, `version`, `cost`, transcript path, context_window, rate_limits)
 - `Config`: User config (theme, `usage_api` mode: `oauth_usage` default, or `haiku_probe`)
 - `Session`: Tracks session intervals and total time
 - `SessionUsageResult`: Token counts and cost for current session
@@ -66,9 +66,11 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 - `stats/daily-*.json` and `stats/weekly-*.json`: Accumulated statistics
 - `api-usage-cache.json`: 30s-cached API usage response
 
-## Model Pricing
+## Cost & Model Pricing
 
-Hardcoded in `modelPricing` map (per 1M tokens, current Claude 4.x family):
+**Primary source**: session cost prefers Claude Code's client-side `cost.total_cost_usd` (authoritative — covers Fast mode, batch, and future pricing changes). The hardcoded `modelPricing` map is now only a **fallback** for older Claude Code that doesn't send `cost`.
+
+Fallback `modelPricing` map (per 1M tokens, current Claude 4.x family):
 
 | Model  | Input | Output | Cache Read | Cache Write (5m) |
 |--------|-------|--------|------------|------------------|
@@ -76,7 +78,7 @@ Hardcoded in `modelPricing` map (per 1M tokens, current Claude 4.x family):
 | Sonnet | $3    | $15    | $0.30      | $3.75            |
 | Haiku  | $1    | $5     | $0.10      | $1.25            |
 
-Lookup is by model family (Opus/Sonnet/Haiku) via `getModelType` parsing `display_name`. Unknown models fall back to Sonnet pricing.
+Family lookup is via `getModelTypeFromInput` — prefers the stable `model.id` (e.g. `claude-opus-4-8`), falling back to `getModelType` parsing `display_name`. Unknown models fall back to Sonnet pricing. `isFastMode` detects `*-fast` ids and doubles the fallback rates (~2x). The daily/weekly/monthly accumulators (`applyCostDelta`) key off per-session cost deltas and only add positive deltas, so switching the cost source mid-history never corrupts or double-counts totals. (Edge case: if the authoritative value lands *below* a prior transcript over-estimate, that drop is ignored and the affected session's total is transiently under-counted until cost climbs back above the old baseline.)
 
 ## Platform Support
 
