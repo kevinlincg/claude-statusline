@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,16 +36,16 @@ var modelPricing = map[string]struct {
 	CacheWrite float64
 }{
 	"Opus": {
-		Input:      5.0,  // Opus 4.5: $5 per 1M input tokens
-		Output:     25.0, // Opus 4.5: $25 per 1M output tokens
-		CacheRead:  0.5,  // Opus 4.5: $0.50 per 1M cache read tokens
-		CacheWrite: 6.25, // Opus 4.5: $6.25 per 1M cache write tokens (5m)
+		Input:      5.0,  // Opus 4.5–4.8: $5 per 1M input tokens
+		Output:     25.0, // Opus 4.5–4.8: $25 per 1M output tokens
+		CacheRead:  0.5,  // Opus 4.5–4.8: $0.50 per 1M cache read tokens
+		CacheWrite: 6.25, // Opus 4.5–4.8: $6.25 per 1M cache write tokens (5m)
 	},
 	"Sonnet": {
-		Input:      3.0,  // Sonnet 4/4.5: $3 per 1M input tokens
-		Output:     15.0, // Sonnet 4/4.5: $15 per 1M output tokens
-		CacheRead:  0.3,  // Sonnet 4/4.5: $0.30 per 1M cache read tokens
-		CacheWrite: 3.75, // Sonnet 4/4.5: $3.75 per 1M cache write tokens (5m)
+		Input:      3.0,  // Sonnet 4–4.6: $3 per 1M input tokens
+		Output:     15.0, // Sonnet 4–4.6: $15 per 1M output tokens
+		CacheRead:  0.3,  // Sonnet 4–4.6: $0.30 per 1M cache read tokens
+		CacheWrite: 3.75, // Sonnet 4–4.6: $3.75 per 1M cache write tokens (5m)
 	},
 	"Haiku": {
 		Input:      1.0,  // Haiku 4.5: $1 per 1M input tokens
@@ -58,11 +59,23 @@ var modelPricing = map[string]struct {
 type Input struct {
 	Model struct {
 		DisplayName string `json:"display_name"`
+		ID          string `json:"id"` // e.g. "claude-opus-4-8" / "claude-opus-4-8-fast"
 	} `json:"model"`
 	SessionID string `json:"session_id"`
 	Workspace struct {
 		CurrentDir string `json:"current_dir"`
 	} `json:"workspace"`
+	// Version is the Claude Code version, supplied directly so we can avoid
+	// shelling out to `claude --version` on every render.
+	Version string `json:"version"`
+	// Cost is computed client-side by Claude Code. total_cost_usd is the
+	// authoritative session cost (covers Fast mode, batch, etc.); we prefer it
+	// over our own transcript-based estimate when present.
+	Cost struct {
+		TotalCostUSD      float64 `json:"total_cost_usd"`
+		TotalLinesAdded   int     `json:"total_lines_added"`
+		TotalLinesRemoved int     `json:"total_lines_removed"`
+	} `json:"cost"`
 	TranscriptPath string `json:"transcript_path,omitempty"`
 	ContextWindow  struct {
 		ContextWindowSize int `json:"context_window_size"`
@@ -70,6 +83,19 @@ type Input struct {
 		TotalOutputTokens int `json:"total_output_tokens"`
 		UsedPercentage    int `json:"used_percentage"`
 	} `json:"context_window"`
+	// RateLimits is supplied directly by Claude Code (Pro/Max subscribers,
+	// recent versions) so we can skip the network round-trip when present.
+	// resets_at is Unix epoch seconds; used_percentage is 0-100.
+	RateLimits struct {
+		FiveHour struct {
+			UsedPercentage float64 `json:"used_percentage"`
+			ResetsAt       int64   `json:"resets_at"`
+		} `json:"five_hour"`
+		SevenDay struct {
+			UsedPercentage float64 `json:"used_percentage"`
+			ResetsAt       int64   `json:"resets_at"`
+		} `json:"seven_day"`
+	} `json:"rate_limits"`
 }
 
 // Config structure
@@ -186,8 +212,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get model type
-	modelType := getModelType(input.Model.DisplayName)
+	// Get model type (prefers the stable model.id over the display name)
+	modelType := getModelTypeFromInput(input)
 
 	// Collect data in parallel
 	data := collectData(input, modelType)
@@ -285,6 +311,8 @@ func runInteractiveMenu() {
 		API5hrTimeLeft:  "3h17m",
 		API7dayPercent:  67,
 		API7dayTimeLeft: "2d5h",
+		LinesAdded:      156,
+		LinesRemoved:    23,
 	}
 
 	// Print function (raw mode requires \r\n)
@@ -422,6 +450,8 @@ func previewThemeDemo(themeName string) {
 		API5hrTimeLeft:  "3h17m",
 		API7dayPercent:  67,
 		API7dayTimeLeft: "2d5h",
+		LinesAdded:      156,
+		LinesRemoved:    23,
 	}
 
 	fmt.Printf("\nPreview theme: %s\n", themeName)
@@ -524,9 +554,10 @@ func collectData(input Input, modelType string) themes.StatusData {
 		results <- Result{"hours", totalHours}
 	}()
 
+	fastMode := isFastMode(input)
 	go func() {
 		defer wg.Done()
-		sessionUsage := calculateSessionUsage(input.TranscriptPath, input.SessionID, modelType)
+		sessionUsage := calculateSessionUsage(input.TranscriptPath, input.SessionID, modelType, fastMode)
 		results <- Result{"session_usage", sessionUsage}
 	}()
 
@@ -544,7 +575,12 @@ func collectData(input Input, modelType string) themes.StatusData {
 
 	go func() {
 		defer wg.Done()
-		apiUsage := fetchAPIUsage()
+		// Prefer rate_limits supplied in Claude Code's JSON input; only fall
+		// back to the network fetch (or Haiku probe) when it's absent.
+		apiUsage := apiUsageFromInput(input)
+		if apiUsage == nil {
+			apiUsage = fetchAPIUsage()
+		}
 		results <- Result{"api_usage", apiUsage}
 	}()
 
@@ -590,8 +626,8 @@ func collectData(input Input, modelType string) themes.StatusData {
 	// Calculate burn rate
 	burnRate := calculateBurnRateValue(dailyStats)
 
-	// Get version and update status
-	version, updateAvailable := getVersionInfo()
+	// Get version and update status (prefers input.Version, no subprocess)
+	version, updateAvailable := resolveVersion(input.Version)
 
 	// API data
 	api5hrPercent := 0
@@ -613,6 +649,16 @@ func collectData(input Input, modelType string) themes.StatusData {
 		cacheHitRate = int(float64(sessionUsage.CacheReadTokens) * 100.0 / float64(totalInput))
 	}
 
+	// Session cost: prefer Claude Code's authoritative client-side value
+	// (covers Fast mode, batch, and future pricing changes); fall back to our
+	// transcript-based estimate when it's absent. The downstream daily/weekly/
+	// monthly accumulators key off sessionID deltas, so the source can switch
+	// without corrupting the running totals.
+	sessionCost := sessionUsage.Cost
+	if input.Cost.TotalCostUSD > 0 {
+		sessionCost = input.Cost.TotalCostUSD
+	}
+
 	return themes.StatusData{
 		ModelName:       formatModelName(input.Model.DisplayName),
 		ModelType:       modelType,
@@ -626,7 +672,7 @@ func collectData(input Input, modelType string) themes.StatusData {
 		MessageCount:    sessionUsage.MessageCount,
 		SessionTime:     totalHours,
 		CacheHitRate:    cacheHitRate,
-		SessionCost:     sessionUsage.Cost,
+		SessionCost:     sessionCost,
 		DayCost:         dailyStats.TotalCost,
 		MonthCost:       monthlyStats.TotalCost,
 		WeekCost:        weeklyStats.TotalCost,
@@ -637,31 +683,55 @@ func collectData(input Input, modelType string) themes.StatusData {
 		API5hrTimeLeft:  api5hrTimeLeft,
 		API7dayPercent:  api7dayPercent,
 		API7dayTimeLeft: api7dayTimeLeft,
+		LinesAdded:      input.Cost.TotalLinesAdded,
+		LinesRemoved:    input.Cost.TotalLinesRemoved,
 	}
 }
 
-// getVersionInfo gets version information
-func getVersionInfo() (string, bool) {
-	// Try to execute claude --version
+// resolveVersion returns the Claude Code version, preferring the value Claude
+// Code now passes in the JSON input (no subprocess) and only shelling out to
+// `claude --version` as a fallback for older Claude Code. The bool reports
+// whether an update is available.
+func resolveVersion(inputVersion string) (string, bool) {
+	version := formatCCVersion(inputVersion)
+	if version == "" {
+		version = claudeCodeVersionFromCLI()
+	}
+	return version, isUpdateAvailable()
+}
+
+// formatCCVersion normalizes a Claude Code version string to a "vX.Y.Z" form.
+// Returns "" when the input is empty so callers can fall back.
+func formatCCVersion(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
+	}
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+	return v
+}
+
+// claudeCodeVersionFromCLI shells out to `claude --version` (fallback path).
+func claudeCodeVersionFromCLI() string {
 	cmd := exec.Command("claude", "--version")
 	output, err := cmd.Output()
-	version := "v?.?.?"
-	if err == nil {
-		version = strings.TrimSpace(string(output))
-		// Remove extra prefix and suffix
-		version = strings.TrimPrefix(version, "claude ")
-		version = strings.TrimSuffix(version, " (Claude Code)")
-		if !strings.HasPrefix(version, "v") {
-			version = "v" + version
-		}
+	if err != nil {
+		return "v?.?.?"
 	}
+	version := strings.TrimSpace(string(output))
+	version = strings.TrimPrefix(version, "claude ")
+	version = strings.TrimSuffix(version, " (Claude Code)")
+	return formatCCVersion(version)
+}
 
-	// Check if update available (check if file exists)
+// isUpdateAvailable reports whether Claude Code has flagged a pending update.
+func isUpdateAvailable() bool {
 	homeDir, _ := os.UserHomeDir()
 	updateFile := filepath.Join(homeDir, ".claude", ".update_available")
-	_, updateAvailable := os.Stat(updateFile)
-
-	return version, updateAvailable == nil
+	_, err := os.Stat(updateFile)
+	return err == nil
 }
 
 // formatModelName formats model name
@@ -674,7 +744,7 @@ func formatModelName(displayName string) string {
 	return displayName
 }
 
-// getModelType gets model type
+// getModelType gets model type from a model's display name.
 func getModelType(displayName string) string {
 	for key := range modelPricing {
 		if strings.Contains(displayName, key) {
@@ -682,6 +752,36 @@ func getModelType(displayName string) string {
 		}
 	}
 	return "Sonnet"
+}
+
+// getModelTypeFromInput resolves the pricing family, preferring the stable
+// model.id (e.g. "claude-opus-4-8") over the human display name. Falls back to
+// display-name matching for older Claude Code that doesn't send model.id.
+func getModelTypeFromInput(input Input) string {
+	if id := strings.ToLower(input.Model.ID); id != "" {
+		for key := range modelPricing {
+			if strings.Contains(id, strings.ToLower(key)) {
+				return key
+			}
+		}
+	}
+	return getModelType(input.Model.DisplayName)
+}
+
+// isFastMode reports whether the session uses Claude Code's Fast mode, which is
+// billed at ~2x the standard per-token rates. Detected via the model id suffix
+// (e.g. "claude-opus-4-8-fast") or a "fast" token / "(fast)" marker in the
+// display name. Uses boundary matching rather than a bare substring so names
+// like "Steadfast" or "fastpath" don't false-positive.
+func isFastMode(input Input) bool {
+	if strings.HasSuffix(strings.ToLower(input.Model.ID), "-fast") {
+		return true
+	}
+	display := strings.ToLower(input.Model.DisplayName)
+	if strings.Contains(display, "(fast)") {
+		return true
+	}
+	return slices.Contains(strings.Fields(display), "fast")
 }
 
 // formatProjectPath formats project path
@@ -726,6 +826,29 @@ func getOAuthToken() string {
 func apiUsageCachePath() string {
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, ".claude", "session-tracker", "api-usage-cache.json")
+}
+
+// apiUsageFromInput builds an *APIUsage from the rate_limits Claude Code now
+// passes in the stdin JSON, avoiding a network round-trip. Returns nil when no
+// window is present (older Claude Code, or non-subscriber sessions), in which
+// case callers fall back to fetchAPIUsage. Each window is independently
+// optional, signalled by a non-zero resets_at.
+func apiUsageFromInput(input Input) *APIUsage {
+	rl := input.RateLimits
+	if rl.FiveHour.ResetsAt == 0 && rl.SevenDay.ResetsAt == 0 {
+		return nil
+	}
+
+	var usage APIUsage
+	usage.FiveHour.Utilization = rl.FiveHour.UsedPercentage
+	if rl.FiveHour.ResetsAt > 0 {
+		usage.FiveHour.ResetsAt = strconv.FormatInt(rl.FiveHour.ResetsAt, 10)
+	}
+	usage.SevenDay.Utilization = rl.SevenDay.UsedPercentage
+	if rl.SevenDay.ResetsAt > 0 {
+		usage.SevenDay.ResetsAt = strconv.FormatInt(rl.SevenDay.ResetsAt, 10)
+	}
+	return &usage
 }
 
 // fetchAPIUsage fetches API usage using the configured method.
@@ -1002,7 +1125,7 @@ func calculateTotalHours(currentSessionID string) string {
 }
 
 // calculateSessionUsage calculates session usage
-func calculateSessionUsage(transcriptPath, sessionID, modelType string) SessionUsageResult {
+func calculateSessionUsage(transcriptPath, sessionID, modelType string, fast bool) SessionUsageResult {
 	result := SessionUsageResult{}
 
 	if transcriptPath == "" {
@@ -1077,24 +1200,56 @@ func calculateSessionUsage(transcriptPath, sessionID, modelType string) SessionU
 		result.Duration = lastTime.Sub(sessionStart)
 	}
 
-	result.Cost = calculateCost(result, modelType)
+	result.Cost = calculateCostMode(result, modelType, fast)
 
 	return result
 }
 
-// calculateCost calculates cost
+// calculateCost calculates cost at standard (non-Fast) rates.
 func calculateCost(usage SessionUsageResult, modelType string) float64 {
+	return calculateCostMode(usage, modelType, false)
+}
+
+// calculateCostMode calculates cost from token counts. When fast is true the
+// per-token rates are doubled to approximate Claude Code's Fast mode (~2x
+// standard pricing). This is a fallback estimate only — when Claude Code sends
+// cost.total_cost_usd we use that authoritative value instead.
+func calculateCostMode(usage SessionUsageResult, modelType string, fast bool) float64 {
 	pricing, ok := modelPricing[modelType]
 	if !ok {
 		pricing = modelPricing["Sonnet"]
 	}
 
-	cost := float64(usage.InputTokens) * pricing.Input / 1000000
-	cost += float64(usage.OutputTokens) * pricing.Output / 1000000
-	cost += float64(usage.CacheReadTokens) * pricing.CacheRead / 1000000
-	cost += float64(usage.CacheWriteTokens) * pricing.CacheWrite / 1000000
+	mult := 1.0
+	if fast {
+		mult = 2.0
+	}
+
+	cost := float64(usage.InputTokens) * pricing.Input * mult / 1000000
+	cost += float64(usage.OutputTokens) * pricing.Output * mult / 1000000
+	cost += float64(usage.CacheReadTokens) * pricing.CacheRead * mult / 1000000
+	cost += float64(usage.CacheWriteTokens) * pricing.CacheWrite * mult / 1000000
 
 	return cost
+}
+
+// applyCostDelta accumulates a session's monotonically-increasing cumulative
+// cost into a stats bucket. It records the last-known cumulative cost per
+// session and adds only the positive delta, so repeated renders within a
+// session never double-count, and switching the cost source (transcript
+// estimate ↔ Claude Code's cost.total_cost_usd) cannot corrupt the running
+// total. A lower incoming value (e.g. the authoritative value landing below a
+// prior transcript over-estimate) is conservatively ignored — totals stay
+// correct on the next rise rather than risking a double-count.
+func applyCostDelta(stats *UsageStats, sessionID string, sessionCost float64) {
+	if stats.SessionCosts == nil {
+		stats.SessionCosts = make(map[string]float64)
+	}
+	delta := sessionCost - stats.SessionCosts[sessionID]
+	if delta > 0 {
+		stats.TotalCost += delta
+		stats.SessionCosts[sessionID] = sessionCost
+	}
 }
 
 // getDailyStats gets daily stats
@@ -1166,16 +1321,7 @@ func updateDailyStats(sessionID string, data themes.StatusData, modelType string
 		json.Unmarshal(fileData, &dailyStats)
 	}
 
-	if dailyStats.SessionCosts == nil {
-		dailyStats.SessionCosts = make(map[string]float64)
-	}
-
-	lastKnownCost := dailyStats.SessionCosts[sessionID]
-	delta := data.SessionCost - lastKnownCost
-	if delta > 0 {
-		dailyStats.TotalCost += delta
-		dailyStats.SessionCosts[sessionID] = data.SessionCost
-	}
+	applyCostDelta(&dailyStats, sessionID, data.SessionCost)
 
 	dailyStats.Date = today
 	dailyStats.LastUpdated = time.Now().Unix()
@@ -1207,16 +1353,7 @@ func updateWeeklyStats(sessionID string, sessionCost float64) {
 		json.Unmarshal(data, &weeklyStats)
 	}
 
-	if weeklyStats.SessionCosts == nil {
-		weeklyStats.SessionCosts = make(map[string]float64)
-	}
-
-	lastKnownCost := weeklyStats.SessionCosts[sessionID]
-	delta := sessionCost - lastKnownCost
-	if delta > 0 {
-		weeklyStats.TotalCost += delta
-		weeklyStats.SessionCosts[sessionID] = sessionCost
-	}
+	applyCostDelta(&weeklyStats, sessionID, sessionCost)
 
 	weeklyStats.Week = weekStart
 	weeklyStats.LastUpdated = time.Now().Unix()
@@ -1239,16 +1376,7 @@ func updateMonthlyStats(sessionID string, sessionCost float64) {
 		json.Unmarshal(data, &monthlyStats)
 	}
 
-	if monthlyStats.SessionCosts == nil {
-		monthlyStats.SessionCosts = make(map[string]float64)
-	}
-
-	lastKnownCost := monthlyStats.SessionCosts[sessionID]
-	delta := sessionCost - lastKnownCost
-	if delta > 0 {
-		monthlyStats.TotalCost += delta
-		monthlyStats.SessionCosts[sessionID] = sessionCost
-	}
+	applyCostDelta(&monthlyStats, sessionID, sessionCost)
 
 	monthlyStats.LastUpdated = time.Now().Unix()
 

@@ -92,6 +92,10 @@ type StatusData struct {
 	API5hrTimeLeft  string
 	API7dayPercent  int
 	API7dayTimeLeft string
+
+	// Code changes this session (from Claude Code's cost.* fields)
+	LinesAdded   int
+	LinesRemoved int
 }
 
 // Theme interface definition

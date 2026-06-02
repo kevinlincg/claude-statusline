@@ -35,9 +35,9 @@ echo '{"model":{"display_name":"Claude Sonnet 4"},...}' | ./statusline
 3. Session usage parsing (token counts & cost from transcript)
 4. Weekly stats loading
 5. Daily stats loading
-6. API usage fetching (file-cached for 30s)
+6. API usage: prefers the `rate_limits` JSON field (no network); falls back to the OAuth usage endpoint / Haiku probe (file-cached) only when absent
 
-The context window info no longer needs its own goroutine — Claude Code now passes it directly in the input JSON (`context_window` field).
+The context window info no longer needs its own goroutine — Claude Code now passes it directly in the input JSON (`context_window` field). Likewise, 5h/7d limits arrive in the `rate_limits` field for Pro/Max subscribers, so `apiUsageFromInput` short-circuits the network fetch when they're present.
 
 Results are collected via a buffered channel and synchronized with `sync.WaitGroup`.
 
@@ -48,7 +48,7 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 ```
 
 **Key data structures**:
-- `Input`: Configuration from Claude Code (model, session ID, workspace, transcript path, context_window)
+- `Input`: Configuration from Claude Code (model `display_name`/`id`, session ID, workspace, `version`, `cost`, transcript path, context_window, rate_limits)
 - `Config`: User config (theme, `usage_api` mode: `oauth_usage` default, or `haiku_probe`)
 - `Session`: Tracks session intervals and total time
 - `SessionUsageResult`: Token counts and cost for current session
@@ -56,7 +56,7 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 
 **External integrations**:
 - OAuth token: reads `~/.claude/.credentials.json` first; falls back to macOS Keychain (`security find-generic-password -s "Claude Code-credentials"`)
-- Anthropic API: `GET https://api.anthropic.com/api/oauth/usage` (default `oauth_usage` mode), or Haiku probe via `x-api-key` header (alternate `haiku_probe` mode)
+- Anthropic API (fallback only, when `rate_limits` is not in the input JSON): `GET https://api.anthropic.com/api/oauth/usage` (default `oauth_usage` mode), or Haiku probe via `x-api-key` header (alternate `haiku_probe` mode)
 - Git: Branch and status via `git branch --show-current` and `git status --porcelain`
 
 **Config path** (`getConfigPath`): prefers XDG (`$XDG_CONFIG_HOME/claude-statusline/config.json` or `~/.config/claude-statusline/config.json`); falls back to binary-adjacent `config.json` for migration.
@@ -66,9 +66,11 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 - `stats/daily-*.json` and `stats/weekly-*.json`: Accumulated statistics
 - `api-usage-cache.json`: 30s-cached API usage response
 
-## Model Pricing
+## Cost & Model Pricing
 
-Hardcoded in `modelPricing` map (per 1M tokens, current Claude 4.x family):
+**Primary source**: session cost prefers Claude Code's client-side `cost.total_cost_usd` (authoritative — covers Fast mode, batch, and future pricing changes). The hardcoded `modelPricing` map is now only a **fallback** for older Claude Code that doesn't send `cost`.
+
+Fallback `modelPricing` map (per 1M tokens, current Claude 4.x family):
 
 | Model  | Input | Output | Cache Read | Cache Write (5m) |
 |--------|-------|--------|------------|------------------|
@@ -76,7 +78,7 @@ Hardcoded in `modelPricing` map (per 1M tokens, current Claude 4.x family):
 | Sonnet | $3    | $15    | $0.30      | $3.75            |
 | Haiku  | $1    | $5     | $0.10      | $1.25            |
 
-Lookup is by model family (Opus/Sonnet/Haiku) via `getModelType` parsing `display_name`. Unknown models fall back to Sonnet pricing.
+Family lookup is via `getModelTypeFromInput` — prefers the stable `model.id` (e.g. `claude-opus-4-8`), falling back to `getModelType` parsing `display_name`. Unknown models fall back to Sonnet pricing. `isFastMode` detects `*-fast` ids and doubles the fallback rates (~2x). The daily/weekly/monthly accumulators (`applyCostDelta`) key off per-session cost deltas and only add positive deltas, so switching the cost source mid-history never corrupts or double-counts totals. (Edge case: if the authoritative value lands *below* a prior transcript over-estimate, that drop is ignored and the affected session's total is transiently under-counted until cost climbs back above the old baseline.)
 
 ## Platform Support
 

@@ -94,6 +94,16 @@ func (t *TwolinePillsTheme) Render(data StatusData) string {
 			ColorYellow, FormatCostShort(data.DayCost), Reset, ColorDim, Reset),
 		PillBorder))
 
+	// Lines changed this session (only when Claude Code reports any)
+	if data.LinesAdded > 0 || data.LinesRemoved > 0 {
+		sb.WriteString(" ")
+		sb.WriteString(t.pill(
+			fmt.Sprintf("%s+%d%s %s-%d%s",
+				ColorGreen, data.LinesAdded, Reset,
+				ColorRed, data.LinesRemoved, Reset),
+			PillBorder))
+	}
+
 	sb.WriteString("\n")
 
 	return sb.String()
