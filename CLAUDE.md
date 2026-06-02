@@ -35,9 +35,9 @@ echo '{"model":{"display_name":"Claude Sonnet 4"},...}' | ./statusline
 3. Session usage parsing (token counts & cost from transcript)
 4. Weekly stats loading
 5. Daily stats loading
-6. API usage fetching (file-cached for 30s)
+6. API usage: prefers the `rate_limits` JSON field (no network); falls back to the OAuth usage endpoint / Haiku probe (file-cached) only when absent
 
-The context window info no longer needs its own goroutine — Claude Code now passes it directly in the input JSON (`context_window` field).
+The context window info no longer needs its own goroutine — Claude Code now passes it directly in the input JSON (`context_window` field). Likewise, 5h/7d limits arrive in the `rate_limits` field for Pro/Max subscribers, so `apiUsageFromInput` short-circuits the network fetch when they're present.
 
 Results are collected via a buffered channel and synchronized with `sync.WaitGroup`.
 
@@ -48,7 +48,7 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 ```
 
 **Key data structures**:
-- `Input`: Configuration from Claude Code (model, session ID, workspace, transcript path, context_window)
+- `Input`: Configuration from Claude Code (model, session ID, workspace, transcript path, context_window, rate_limits)
 - `Config`: User config (theme, `usage_api` mode: `oauth_usage` default, or `haiku_probe`)
 - `Session`: Tracks session intervals and total time
 - `SessionUsageResult`: Token counts and cost for current session
@@ -56,7 +56,7 @@ JSON Input (stdin) → Parse → Launch 6 parallel goroutines → Collect via ch
 
 **External integrations**:
 - OAuth token: reads `~/.claude/.credentials.json` first; falls back to macOS Keychain (`security find-generic-password -s "Claude Code-credentials"`)
-- Anthropic API: `GET https://api.anthropic.com/api/oauth/usage` (default `oauth_usage` mode), or Haiku probe via `x-api-key` header (alternate `haiku_probe` mode)
+- Anthropic API (fallback only, when `rate_limits` is not in the input JSON): `GET https://api.anthropic.com/api/oauth/usage` (default `oauth_usage` mode), or Haiku probe via `x-api-key` header (alternate `haiku_probe` mode)
 - Git: Branch and status via `git branch --show-current` and `git status --porcelain`
 
 **Config path** (`getConfigPath`): prefers XDG (`$XDG_CONFIG_HOME/claude-statusline/config.json` or `~/.config/claude-statusline/config.json`); falls back to binary-adjacent `config.json` for migration.

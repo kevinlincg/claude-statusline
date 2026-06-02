@@ -70,6 +70,19 @@ type Input struct {
 		TotalOutputTokens int `json:"total_output_tokens"`
 		UsedPercentage    int `json:"used_percentage"`
 	} `json:"context_window"`
+	// RateLimits is supplied directly by Claude Code (Pro/Max subscribers,
+	// recent versions) so we can skip the network round-trip when present.
+	// resets_at is Unix epoch seconds; used_percentage is 0-100.
+	RateLimits struct {
+		FiveHour struct {
+			UsedPercentage float64 `json:"used_percentage"`
+			ResetsAt       int64   `json:"resets_at"`
+		} `json:"five_hour"`
+		SevenDay struct {
+			UsedPercentage float64 `json:"used_percentage"`
+			ResetsAt       int64   `json:"resets_at"`
+		} `json:"seven_day"`
+	} `json:"rate_limits"`
 }
 
 // Config structure
@@ -544,7 +557,12 @@ func collectData(input Input, modelType string) themes.StatusData {
 
 	go func() {
 		defer wg.Done()
-		apiUsage := fetchAPIUsage()
+		// Prefer rate_limits supplied in Claude Code's JSON input; only fall
+		// back to the network fetch (or Haiku probe) when it's absent.
+		apiUsage := apiUsageFromInput(input)
+		if apiUsage == nil {
+			apiUsage = fetchAPIUsage()
+		}
 		results <- Result{"api_usage", apiUsage}
 	}()
 
@@ -726,6 +744,29 @@ func getOAuthToken() string {
 func apiUsageCachePath() string {
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, ".claude", "session-tracker", "api-usage-cache.json")
+}
+
+// apiUsageFromInput builds an *APIUsage from the rate_limits Claude Code now
+// passes in the stdin JSON, avoiding a network round-trip. Returns nil when no
+// window is present (older Claude Code, or non-subscriber sessions), in which
+// case callers fall back to fetchAPIUsage. Each window is independently
+// optional, signalled by a non-zero resets_at.
+func apiUsageFromInput(input Input) *APIUsage {
+	rl := input.RateLimits
+	if rl.FiveHour.ResetsAt == 0 && rl.SevenDay.ResetsAt == 0 {
+		return nil
+	}
+
+	var usage APIUsage
+	usage.FiveHour.Utilization = rl.FiveHour.UsedPercentage
+	if rl.FiveHour.ResetsAt > 0 {
+		usage.FiveHour.ResetsAt = strconv.FormatInt(rl.FiveHour.ResetsAt, 10)
+	}
+	usage.SevenDay.Utilization = rl.SevenDay.UsedPercentage
+	if rl.SevenDay.ResetsAt > 0 {
+		usage.SevenDay.ResetsAt = strconv.FormatInt(rl.SevenDay.ResetsAt, 10)
+	}
+	return &usage
 }
 
 // fetchAPIUsage fetches API usage using the configured method.

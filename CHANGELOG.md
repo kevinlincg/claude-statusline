@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Accurate 1M/200K context window display using Claude Code's `context_window` JSON field
+- Read 5h/7d rate limits directly from Claude Code's `rate_limits` JSON field (Pro/Max subscribers, recent versions), skipping the network round-trip / Haiku probe when present
 
 ### Changed
+- API usage now prefers the `rate_limits` stdin field and only falls back to the OAuth usage endpoint (or Haiku probe) when it is absent
 - Documentation: `usage_api` default clarified as `oauth_usage`, with notes on `haiku_probe` fallback
 
 ### Dependencies
