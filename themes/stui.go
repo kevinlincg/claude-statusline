@@ -110,6 +110,7 @@ func (t *StuiTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line4 += fmt.Sprintf(" %s*%d%s", StuiYellow, data.GitDirty, Reset)
 		}
+		line4 += FormatGitExtras(data, StuiGreen, StuiYellow, Dim)
 	}
 	sb.WriteString(stuiPadLine(line4, width, StuiDimGreen+"│"+Reset))
 

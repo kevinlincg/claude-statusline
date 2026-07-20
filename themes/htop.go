@@ -84,6 +84,7 @@ func (t *HtopTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line3 += fmt.Sprintf(" %s~%d%s", HtopYellow, data.GitDirty, Reset)
 		}
+		line3 += FormatGitExtras(data, HtopGreen, HtopYellow, Dim)
 	}
 	sb.WriteString(line3 + "\n")
 

@@ -151,6 +151,10 @@ type GitInfo struct {
 	Branch      string
 	DirtyCount  int
 	StagedCount int
+	AheadCount  int    // commits ahead of upstream (to push)
+	BehindCount int    // commits behind upstream (to pull)
+	StashCount  int    // number of stash entries
+	ShortSHA    string // short commit SHA of HEAD
 }
 
 // SessionUsageResult contains session usage information
@@ -296,6 +300,11 @@ func runInteractiveMenu() {
 		GitBranch:       "main",
 		GitStaged:       3,
 		GitDirty:        5,
+		GitAhead:        2,
+		GitBehind:       1,
+		GitStash:        1,
+		GitSHA:          "a1b2c3d",
+		TokensPerSec:    1250.0,
 		TokenCount:      45200,
 		MessageCount:    12,
 		SessionTime:     "1h30m",
@@ -435,6 +444,11 @@ func previewThemeDemo(themeName string) {
 		GitBranch:       "main",
 		GitStaged:       3,
 		GitDirty:        5,
+		GitAhead:        2,
+		GitBehind:       1,
+		GitStash:        1,
+		GitSHA:          "a1b2c3d",
+		TokensPerSec:    1250.0,
 		TokenCount:      45200,
 		MessageCount:    12,
 		SessionTime:     "1h30m",
@@ -649,6 +663,15 @@ func collectData(input Input, modelType string) themes.StatusData {
 		cacheHitRate = int(float64(sessionUsage.CacheReadTokens) * 100.0 / float64(totalInput))
 	}
 
+	// Token throughput (tokens/second) over the session's active span. Guard the
+	// zero-duration case (single message, or a transcript with no timestamps) to
+	// avoid a divide-by-zero producing +Inf.
+	totalTokens := sessionUsage.InputTokens + sessionUsage.OutputTokens + sessionUsage.CacheReadTokens + sessionUsage.CacheWriteTokens
+	tokensPerSec := 0.0
+	if secs := sessionUsage.Duration.Seconds(); secs > 0 {
+		tokensPerSec = float64(totalTokens) / secs
+	}
+
 	// Session cost: prefer Claude Code's authoritative client-side value
 	// (covers Fast mode, batch, and future pricing changes); fall back to our
 	// transcript-based estimate when it's absent. The downstream daily/weekly/
@@ -668,10 +691,15 @@ func collectData(input Input, modelType string) themes.StatusData {
 		GitBranch:       gitInfo.Branch,
 		GitStaged:       gitInfo.StagedCount,
 		GitDirty:        gitInfo.DirtyCount,
-		TokenCount:      sessionUsage.InputTokens + sessionUsage.OutputTokens + sessionUsage.CacheReadTokens + sessionUsage.CacheWriteTokens,
+		GitAhead:        gitInfo.AheadCount,
+		GitBehind:       gitInfo.BehindCount,
+		GitStash:        gitInfo.StashCount,
+		GitSHA:          gitInfo.ShortSHA,
+		TokenCount:      totalTokens,
 		MessageCount:    sessionUsage.MessageCount,
 		SessionTime:     totalHours,
 		CacheHitRate:    cacheHitRate,
+		TokensPerSec:    tokensPerSec,
 		SessionCost:     sessionCost,
 		DayCost:         dailyStats.TotalCost,
 		MonthCost:       monthlyStats.TotalCost,
@@ -994,7 +1022,9 @@ func getGitInfo() GitInfo {
 	}
 	result.Branch = strings.TrimSpace(string(output))
 
-	cmd = exec.Command("git", "status", "--porcelain")
+	// --branch adds a leading "## <branch>...<upstream> [ahead N, behind M]"
+	// header we parse for ahead/behind, at no extra git process cost.
+	cmd = exec.Command("git", "status", "--porcelain", "--branch")
 	output, err = cmd.Output()
 	if err != nil {
 		return result
@@ -1002,6 +1032,10 @@ func getGitInfo() GitInfo {
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	for _, line := range lines {
+		if strings.HasPrefix(line, "## ") {
+			result.AheadCount, result.BehindCount = parseAheadBehind(line)
+			continue
+		}
 		if len(line) < 2 {
 			continue
 		}
@@ -1016,7 +1050,52 @@ func getGitInfo() GitInfo {
 		}
 	}
 
+	// Short HEAD SHA (empty on an unborn branch with no commits yet).
+	if out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output(); err == nil {
+		result.ShortSHA = strings.TrimSpace(string(out))
+	}
+
+	// Stash entry count (one line per stash; empty output means zero).
+	if out, err := exec.Command("git", "stash", "list").Output(); err == nil {
+		if s := strings.TrimSpace(string(out)); s != "" {
+			result.StashCount = strings.Count(s, "\n") + 1
+		}
+	}
+
 	return result
+}
+
+// parseAheadBehind extracts ahead/behind commit counts from a `git status
+// --porcelain --branch` header line, e.g.
+//
+//	## main...origin/main [ahead 2, behind 1]
+//
+// Returns (0, 0) when the branch is level with upstream, has no upstream, or the
+// bracket segment is absent/malformed.
+func parseAheadBehind(header string) (ahead, behind int) {
+	open := strings.LastIndex(header, "[")
+	closeIdx := strings.LastIndex(header, "]")
+	if open == -1 || closeIdx == -1 || closeIdx < open {
+		return 0, 0
+	}
+	inside := header[open+1 : closeIdx] // "ahead 2, behind 1"
+	for _, part := range strings.Split(inside, ",") {
+		fields := strings.Fields(part)
+		if len(fields) != 2 {
+			continue
+		}
+		n, err := strconv.Atoi(fields[1])
+		if err != nil {
+			continue
+		}
+		switch fields[0] {
+		case "ahead":
+			ahead = n
+		case "behind":
+			behind = n
+		}
+	}
+	return ahead, behind
 }
 
 // updateSession updates session
@@ -1146,6 +1225,18 @@ func calculateSessionUsage(transcriptPath, sessionID, modelType string, fast boo
 	var sessionStart time.Time
 	var lastTime time.Time
 
+	// Claude Code streams each assistant message to the transcript multiple
+	// times (partial + final writes) under the same message.id with identical
+	// final usage numbers. Summing every line double-counts tokens (~2x+), which
+	// inflates the displayed token count and cache-hit rate. Dedup by message.id,
+	// keeping the last occurrence; entries without an id (rare) can't be deduped
+	// and are summed directly. See calculateSessionUsage dedup test.
+	type usageTokens struct {
+		input, output, cacheRead, cacheWrite int64
+	}
+	byMsgID := make(map[string]usageTokens)
+	var order []string // preserve first-seen order for deterministic summing
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" {
@@ -1180,20 +1271,42 @@ func calculateSessionUsage(transcriptPath, sessionID, modelType string, fast boo
 
 		if message, ok := data["message"].(map[string]interface{}); ok {
 			if usage, ok := message["usage"].(map[string]interface{}); ok {
+				var u usageTokens
 				if input, ok := usage["input_tokens"].(float64); ok {
-					result.InputTokens += int64(input)
+					u.input = int64(input)
 				}
 				if output, ok := usage["output_tokens"].(float64); ok {
-					result.OutputTokens += int64(output)
+					u.output = int64(output)
 				}
 				if cacheRead, ok := usage["cache_read_input_tokens"].(float64); ok {
-					result.CacheReadTokens += int64(cacheRead)
+					u.cacheRead = int64(cacheRead)
 				}
 				if cacheCreation, ok := usage["cache_creation_input_tokens"].(float64); ok {
-					result.CacheWriteTokens += int64(cacheCreation)
+					u.cacheWrite = int64(cacheCreation)
+				}
+
+				if id, ok := message["id"].(string); ok && id != "" {
+					if _, seen := byMsgID[id]; !seen {
+						order = append(order, id)
+					}
+					byMsgID[id] = u // last write wins
+				} else {
+					// No message id to dedup on; count it once, here.
+					result.InputTokens += u.input
+					result.OutputTokens += u.output
+					result.CacheReadTokens += u.cacheRead
+					result.CacheWriteTokens += u.cacheWrite
 				}
 			}
 		}
+	}
+
+	for _, id := range order {
+		u := byMsgID[id]
+		result.InputTokens += u.input
+		result.OutputTokens += u.output
+		result.CacheReadTokens += u.cacheRead
+		result.CacheWriteTokens += u.cacheWrite
 	}
 
 	if !sessionStart.IsZero() && !lastTime.IsZero() {

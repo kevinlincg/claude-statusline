@@ -74,6 +74,7 @@ func (t *IsekaiTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s!%d%s", IsekaiRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, IsekaiGreen, IsekaiRed, Dim)
 	}
 
 	line2 := fmt.Sprintf(" %sQuest:%s %s%s",

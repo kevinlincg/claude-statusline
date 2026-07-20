@@ -76,13 +76,16 @@ func (t *ClassicTheme) formatPathGit(data StatusData) string {
 	git := ""
 	if data.GitBranch != "" {
 		git = fmt.Sprintf("  %s⚡ %s%s", ColorCyan, data.GitBranch, Reset)
-		if data.GitStaged > 0 || data.GitDirty > 0 {
+		if data.GitStaged > 0 || data.GitDirty > 0 || data.GitAhead > 0 || data.GitBehind > 0 || data.GitStash > 0 || data.GitSHA != "" {
 			var status []string
 			if data.GitStaged > 0 {
 				status = append(status, fmt.Sprintf("%s+%d%s", ColorGreen, data.GitStaged, Reset))
 			}
 			if data.GitDirty > 0 {
 				status = append(status, fmt.Sprintf("%s~%d%s", ColorOrange, data.GitDirty, Reset))
+			}
+			if ab := strings.TrimSpace(FormatGitExtras(data, ColorGreen, ColorOrange, Dim)); ab != "" {
+				status = append(status, ab)
 			}
 			git += "  " + strings.Join(status, " ")
 		}

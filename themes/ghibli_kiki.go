@@ -65,6 +65,7 @@ func (t *KikiTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", KikiRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, KikiPink, KikiRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("    %sDelivery:%s %s%s",

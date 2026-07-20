@@ -76,6 +76,7 @@ func (t *LORDTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			sb.WriteString(fmt.Sprintf(" %s*%d%s", LORDBrightYellow, data.GitDirty, Reset))
 		}
+		sb.WriteString(FormatGitExtras(data, LORDBrightGreen, LORDBrightYellow, Dim))
 	}
 	sb.WriteString("\n\n")
 

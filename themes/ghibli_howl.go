@@ -69,6 +69,7 @@ func (t *HowlTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", HowlOrange, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, HowlGold, HowlOrange, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sDoor:%s %s%s",

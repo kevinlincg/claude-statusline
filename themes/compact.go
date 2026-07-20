@@ -45,6 +45,7 @@ func (t *CompactTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			sb.WriteString(fmt.Sprintf(" %s~%d%s", ColorOrange, data.GitDirty, Reset))
 		}
+		sb.WriteString(FormatGitExtras(data, ColorGreen, ColorOrange, Dim))
 	}
 	sb.WriteString("\n")
 
@@ -53,6 +54,12 @@ func (t *CompactTheme) Render(data StatusData) string {
 		ColorPurple, FormatTokens(data.TokenCount), Reset,
 		ColorCyan, data.MessageCount, Reset,
 		ColorSilver, data.SessionTime, Reset))
+	if tps := FormatTokensPerSec(data.TokensPerSec); tps != "" {
+		sb.WriteString(fmt.Sprintf("  %s%s%s", ColorPurple, tps, Reset))
+	}
+	if lines := FormatLinesChanged(data.LinesAdded, data.LinesRemoved, ColorGreen, ColorRed); lines != "" {
+		sb.WriteString("  " + lines)
+	}
 	sb.WriteString(fmt.Sprintf("  %s│%s  ", ColorFrame, Reset))
 	sb.WriteString(fmt.Sprintf("%s%s%s ses  %s%s%s day  %s%s%s mon  %s%s/h%s  %s%d%%hit%s",
 		ColorGreen, FormatCost(data.SessionCost), Reset,

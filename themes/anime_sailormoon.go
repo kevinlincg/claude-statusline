@@ -66,6 +66,7 @@ func (t *SailorMoonTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SMRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SMYellow, SMRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %s♪%s %sMission:%s %s%s",

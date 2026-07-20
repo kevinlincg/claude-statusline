@@ -69,6 +69,7 @@ func (t *SAOTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SAOYellow, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SAOGreen, SAOYellow, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sFloor:%s %s%s",

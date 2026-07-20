@@ -59,6 +59,7 @@ func (t *SynthwaveTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line1 += fmt.Sprintf(" %s~%d%s", SynthOrange, data.GitDirty, Reset)
 		}
+		line1 += FormatGitExtras(data, SynthCyan, SynthOrange, Dim)
 	}
 	sb.WriteString(line1)
 	sb.WriteString("\n")

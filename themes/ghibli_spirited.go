@@ -65,6 +65,7 @@ func (t *SpiritedTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SPRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SPGold, SPRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("    %sTask:%s %s%s",

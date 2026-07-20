@@ -73,6 +73,7 @@ func (t *AOTTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s!%d%s", AOTRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, AOTGreen, AOTRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sMISSION:%s %s%s",

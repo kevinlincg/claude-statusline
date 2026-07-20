@@ -57,6 +57,7 @@ func (t *SteampunkTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitStr += fmt.Sprintf(" %s~%d%s", SteamRust, data.GitDirty, Reset)
 		}
+		gitStr += FormatGitExtras(data, SteamGreen, SteamRust, Dim)
 	}
 
 	line1 := fmt.Sprintf("%s|%s %s*%s %s%s%s %s%s%s%s  %s|%s  %s*%s %s%s%s%s",

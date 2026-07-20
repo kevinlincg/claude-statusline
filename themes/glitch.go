@@ -56,6 +56,7 @@ func (t *GlitchTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitStr += fmt.Sprintf(" %s~%d%s", GlitchRed, data.GitDirty, Reset)
 		}
+		gitStr += FormatGitExtras(data, GlitchCyan, GlitchRed, Dim)
 	}
 
 	line1 := fmt.Sprintf("%s▌%s %s %s%s  %s▐▌%s  %s%s",

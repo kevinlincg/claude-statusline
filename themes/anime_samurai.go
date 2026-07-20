@@ -54,6 +54,7 @@ func (t *SamuraiTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SMRRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SMRGold, SMRRed, Dim)
 	}
 
 	line1 := fmt.Sprintf("  %s刀:%s %s%s%s  %s位:%s %s%s%s  %s道:%s %s%s",

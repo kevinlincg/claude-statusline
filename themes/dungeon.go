@@ -77,6 +77,7 @@ func (t *DungeonTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitStr += fmt.Sprintf(" %s*%d%s", DunRed, data.GitDirty, Reset)
 		}
+		gitStr += FormatGitExtras(data, DunGreen, DunRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("%s▓%s%s║%s %s📜 %s%s%s",

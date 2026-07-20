@@ -68,6 +68,7 @@ func (t *OceanTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line1 += fmt.Sprintf(" %s~%d%s", OceanCoral, data.GitDirty, Reset)
 		}
+		line1 += FormatGitExtras(data, OceanGreen, OceanCoral, Dim)
 	}
 	sb.WriteString(line1)
 	sb.WriteString("\n")

@@ -60,6 +60,7 @@ func (t *MatrixTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line1 += fmt.Sprintf(" %s~%d%s", ColorOrange, data.GitDirty, Reset)
 		}
+		line1 += FormatGitExtras(data, ColorGreen, ColorOrange, Dim)
 	}
 
 	sb.WriteString(MatrixGreen)

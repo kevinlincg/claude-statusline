@@ -44,6 +44,7 @@ func (t *TwolinePillsTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitContent += fmt.Sprintf(" %s~%d%s", ColorOrange, data.GitDirty, Reset)
 		}
+		gitContent += FormatGitExtras(data, ColorGreen, ColorOrange, Dim)
 		sb.WriteString(t.pill(gitContent, PillBorder))
 	}
 
@@ -94,14 +95,18 @@ func (t *TwolinePillsTheme) Render(data StatusData) string {
 			ColorYellow, FormatCostShort(data.DayCost), Reset, ColorDim, Reset),
 		PillBorder))
 
-	// Lines changed this session (only when Claude Code reports any)
-	if data.LinesAdded > 0 || data.LinesRemoved > 0 {
+	// Token throughput (only when a rate could be measured)
+	if tps := FormatTokensPerSec(data.TokensPerSec); tps != "" {
 		sb.WriteString(" ")
 		sb.WriteString(t.pill(
-			fmt.Sprintf("%s+%d%s %s-%d%s",
-				ColorGreen, data.LinesAdded, Reset,
-				ColorRed, data.LinesRemoved, Reset),
+			fmt.Sprintf("%s%s%s %stok%s", ColorPurple, tps, Reset, ColorDim, Reset),
 			PillBorder))
+	}
+
+	// Lines changed this session (only when Claude Code reports any)
+	if lines := FormatLinesChanged(data.LinesAdded, data.LinesRemoved, ColorGreen, ColorRed); lines != "" {
+		sb.WriteString(" ")
+		sb.WriteString(t.pill(lines, PillBorder))
 	}
 
 	sb.WriteString("\n")

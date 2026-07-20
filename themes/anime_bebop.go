@@ -69,6 +69,7 @@ func (t *BebopTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", BebopRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, BebopGreen, BebopRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sTarget:%s %s%s",

@@ -52,6 +52,7 @@ func (t *OnelinePillsTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitContent += fmt.Sprintf(" %s~%d%s", ColorOrange, data.GitDirty, Reset)
 		}
+		gitContent += FormatGitExtras(data, ColorGreen, ColorOrange, Dim)
 		sb.WriteString(t.pill(gitContent, PillBorder))
 	}
 
@@ -80,6 +81,18 @@ func (t *OnelinePillsTheme) Render(data StatusData) string {
 	sb.WriteString(t.pill(
 		fmt.Sprintf("%s7d%s %s %s%d%%%s%s", ColorDim, Reset, bar7, color7, data.API7dayPercent, Reset, time7),
 		PillBorder))
+
+	// Pill: token throughput (only when a rate could be measured)
+	if tps := FormatTokensPerSec(data.TokensPerSec); tps != "" {
+		sb.WriteString(" ")
+		sb.WriteString(t.pill(fmt.Sprintf("%s%s%s %stok%s", ColorPurple, tps, Reset, ColorDim, Reset), PillBorder))
+	}
+
+	// Pill: lines changed this session (only when Claude Code reports any)
+	if lines := FormatLinesChanged(data.LinesAdded, data.LinesRemoved, ColorGreen, ColorRed); lines != "" {
+		sb.WriteString(" ")
+		sb.WriteString(t.pill(lines, PillBorder))
+	}
 
 	sb.WriteString("\n")
 	return sb.String()

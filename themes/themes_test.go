@@ -5,6 +5,137 @@ import (
 	"testing"
 )
 
+func TestFormatAheadBehind(t *testing.T) {
+	green := "\033[32m"
+	orange := "\033[33m"
+
+	tests := []struct {
+		name        string
+		ahead       int
+		behind      int
+		aheadColor  string
+		behindColor string
+		wantSubstrs []string // must all be present
+		wantEmpty   bool
+	}{
+		{name: "both, colored", ahead: 2, behind: 1, aheadColor: green, behindColor: orange,
+			wantSubstrs: []string{"↑2", "↓1", green, orange, Reset}},
+		{name: "ahead only", ahead: 3, behind: 0, aheadColor: green, behindColor: orange,
+			wantSubstrs: []string{"↑3"}},
+		{name: "behind only", ahead: 0, behind: 5, aheadColor: green, behindColor: orange,
+			wantSubstrs: []string{"↓5"}},
+		{name: "level is empty", ahead: 0, behind: 0, aheadColor: green, behindColor: orange,
+			wantEmpty: true},
+		{name: "no color leaves no ANSI", ahead: 1, behind: 1, aheadColor: "", behindColor: "",
+			wantSubstrs: []string{"↑1", "↓1"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatAheadBehind(tt.ahead, tt.behind, tt.aheadColor, tt.behindColor)
+			if tt.wantEmpty {
+				if got != "" {
+					t.Errorf("expected empty, got %q", got)
+				}
+				return
+			}
+			for _, s := range tt.wantSubstrs {
+				if !strings.Contains(got, s) {
+					t.Errorf("FormatAheadBehind(%d,%d,...) = %q; missing %q",
+						tt.ahead, tt.behind, got, s)
+				}
+			}
+			// behind-only must not emit an ahead arrow, and vice versa
+			if tt.ahead == 0 && strings.Contains(got, "↑") {
+				t.Errorf("unexpected ↑ when ahead=0: %q", got)
+			}
+			if tt.behind == 0 && strings.Contains(got, "↓") {
+				t.Errorf("unexpected ↓ when behind=0: %q", got)
+			}
+			// no-color case must contain no ANSI reset
+			if tt.aheadColor == "" && tt.behindColor == "" && strings.Contains(got, Reset) {
+				t.Errorf("expected no ANSI reset in uncolored output: %q", got)
+			}
+		})
+	}
+}
+
+func TestFormatGitExtras(t *testing.T) {
+	green, orange, dim := "\033[32m", "\033[33m", "\033[2m"
+
+	t.Run("all segments present", func(t *testing.T) {
+		d := StatusData{GitAhead: 2, GitBehind: 1, GitStash: 3, GitSHA: "a1b2c3d"}
+		got := FormatGitExtras(d, green, orange, dim)
+		for _, s := range []string{"↑2", "↓1", "⚑3", "@a1b2c3d"} {
+			if !strings.Contains(got, s) {
+				t.Errorf("FormatGitExtras missing %q in %q", s, got)
+			}
+		}
+	})
+
+	t.Run("clean repo yields empty", func(t *testing.T) {
+		d := StatusData{GitSHA: ""} // no ahead/behind, no stash, no sha
+		if got := FormatGitExtras(d, green, orange, dim); got != "" {
+			t.Errorf("expected empty for clean repo, got %q", got)
+		}
+	})
+
+	t.Run("stash and sha only", func(t *testing.T) {
+		d := StatusData{GitStash: 1, GitSHA: "deadbee"}
+		got := FormatGitExtras(d, green, orange, dim)
+		if strings.Contains(got, "↑") || strings.Contains(got, "↓") {
+			t.Errorf("unexpected ahead/behind arrows: %q", got)
+		}
+		if !strings.Contains(got, "⚑1") || !strings.Contains(got, "@deadbee") {
+			t.Errorf("missing stash/sha: %q", got)
+		}
+	})
+
+	t.Run("empty dim color emits no reset for stash/sha", func(t *testing.T) {
+		d := StatusData{GitStash: 2, GitSHA: "abc1234"}
+		got := FormatGitExtras(d, "", "", "")
+		if strings.Contains(got, Reset) {
+			t.Errorf("expected no ANSI reset with empty colors: %q", got)
+		}
+		if !strings.Contains(got, "⚑2") || !strings.Contains(got, "@abc1234") {
+			t.Errorf("missing stash/sha: %q", got)
+		}
+	})
+}
+
+func TestFormatLinesChanged(t *testing.T) {
+	green, red := "\033[32m", "\033[31m"
+	if got := FormatLinesChanged(0, 0, green, red); got != "" {
+		t.Errorf("expected empty when no lines changed, got %q", got)
+	}
+	got := FormatLinesChanged(120, 45, green, red)
+	if !strings.Contains(got, "+120") || !strings.Contains(got, "-45") {
+		t.Errorf("FormatLinesChanged = %q; want +120 and -45", got)
+	}
+	// only additions still renders (removed shows 0)
+	if got := FormatLinesChanged(5, 0, green, red); !strings.Contains(got, "+5") {
+		t.Errorf("FormatLinesChanged(5,0) = %q; want +5", got)
+	}
+}
+
+func TestFormatTokensPerSec(t *testing.T) {
+	tests := []struct {
+		rate float64
+		want string
+	}{
+		{0, ""},
+		{-1, ""},
+		{1250, "1.2k/s"},
+		{500, "500/s"},
+		{2000000, "2.0M/s"},
+	}
+	for _, tt := range tests {
+		if got := FormatTokensPerSec(tt.rate); got != tt.want {
+			t.Errorf("FormatTokensPerSec(%v) = %q; want %q", tt.rate, got, tt.want)
+		}
+	}
+}
+
 func TestFormatTokens(t *testing.T) {
 	tests := []struct {
 		tokens   int64

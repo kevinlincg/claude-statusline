@@ -68,6 +68,7 @@ func (t *SpyFamilyTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SPYRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SPYGreen, SPYRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sMission:%s %s%s",

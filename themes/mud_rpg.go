@@ -65,6 +65,7 @@ func (t *MUDRPGTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitStr += fmt.Sprintf("%s~%d%s", MUDRed, data.GitDirty, Reset)
 		}
+		gitStr += FormatGitExtras(data, MUDGreen, MUDRed, Dim)
 	}
 
 	line1 := fmt.Sprintf("%s║%s %s%s%s%s Lv.%s%s%s%s  %s%s%s%s",

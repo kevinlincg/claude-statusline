@@ -73,6 +73,7 @@ func (t *DemonSlayerTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", DSOrange, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, DSGreen, DSOrange, Dim)
 	}
 
 	line2 := fmt.Sprintf(" %sTarget:%s %s%s",

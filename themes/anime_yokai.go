@@ -71,6 +71,7 @@ func (t *YokaiTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", YKIRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, YKIGreen, YKIRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("          %s界:%s %s%s",

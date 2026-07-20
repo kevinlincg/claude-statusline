@@ -65,6 +65,7 @@ func (t *ChainsawTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", CSMBlood, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, CSMYellow, CSMBlood, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sContract:%s %s%s",

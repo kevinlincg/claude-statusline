@@ -69,6 +69,7 @@ func (t *MHATheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", MHAOrange, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, MHAGreen, MHAOrange, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sAgency:%s %s%s",

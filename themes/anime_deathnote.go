@@ -63,6 +63,7 @@ func (t *DeathNoteTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", DNRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, DNWhite, DNRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sTarget:%s %s%s",

@@ -123,6 +123,7 @@ func (t *BtopTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line4 += fmt.Sprintf(" %s~%d%s", BtopOrange, data.GitDirty, Reset)
 		}
+		line4 += FormatGitExtras(data, BtopGreen, BtopOrange, Dim)
 	}
 	sb.WriteString(PadRight(line4, 79))
 	sb.WriteString(BtopBorder + "│" + Reset + "\n")

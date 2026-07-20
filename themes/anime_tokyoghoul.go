@@ -64,6 +64,7 @@ func (t *TokyoGhoulTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", TGRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, TGWhite, TGRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sTerritory:%s %s%s",

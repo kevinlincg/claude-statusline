@@ -65,6 +65,7 @@ func (t *ReZeroTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", RZRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, RZBlue, RZRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sSave Point:%s %s%s",

@@ -73,6 +73,7 @@ func (t *HxHTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", HxHOrange, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, HxHGreen, HxHOrange, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sQuest:%s %s%s",

@@ -76,6 +76,7 @@ func (t *TradeWarsTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitStr += fmt.Sprintf(" %s*%d%s", TWYellow, data.GitDirty, Reset)
 		}
+		gitStr += FormatGitExtras(data, TWBrightGreen, TWYellow, Dim)
 	}
 
 	line2 := fmt.Sprintf("%s.    *%s|%s %sNav:%s %s%s%s%s",

@@ -69,6 +69,7 @@ func (t *GITSTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", GITSRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, GITSGreen, GITSRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sOperation:%s %s%s",
