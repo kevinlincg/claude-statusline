@@ -76,6 +76,7 @@ func (t *IdolTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", IDLPurple, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, IDLPink, IDLPurple, Dim)
 	}
 
 	line2 := fmt.Sprintf("      %s♪ Venue:%s %s%s",

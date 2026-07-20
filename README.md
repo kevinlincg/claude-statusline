@@ -64,6 +64,25 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
+#### Refresh interval (optional)
+
+Claude Code **2.1.97+** supports refreshing the status line on a timer via
+`refreshInterval` (seconds, 1–60). This keeps time-based fields — daily hours,
+reset countdowns, burn rate — current between prompts:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline-go/statusline",
+    "refreshInterval": 10
+  }
+}
+```
+
+Omit it to keep the default behavior (refresh on each Claude Code update). Older
+Claude Code versions ignore the field.
+
 ## Themes
 
 ### Interactive Theme Selector
@@ -126,7 +145,7 @@ Edit the `config.json` file located next to the `statusline` binary:
 ### Line 1: Basic Info
 - **Model**: Current Claude model (Opus/Sonnet/Haiku)
 - **Project**: Current working directory name
-- **Git Branch**: Branch name and status (+staged/~dirty)
+- **Git Branch**: Branch name and status (`+staged` / `~dirty` / `↑ahead` / `↓behind` vs upstream / `⚑stash` count / `@short-sha`)
 - **Context**: Context window usage with progress bar
 - **Daily Hours**: Total work time today
 
@@ -138,6 +157,8 @@ Progress bar colors: Green (<50%) → Yellow (50-75%) → Orange (75-90%) → Re
 
 ### Line 3: Session Stats
 - **Tokens**: Total tokens used this session
+- **Token Speed**: Session throughput (`tok/s`) — shown in select themes (`twoline_pills`, `compact`, `oneline_pills`, `oneline_clean`)
+- **Lines Changed**: Code churn this session (`+added -removed`) — shown in the same select themes
 - **Cost**: Estimated session cost (USD)
 - **Duration**: Session length
 - **Messages**: Message count
@@ -169,6 +190,14 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ## Security
 
 Release artifacts are signed and include SLSA provenance. See [SECURITY.md](SECURITY.md) for verification instructions.
+
+## Inspired By
+
+- [ccstatusline](https://github.com/sirmalloc/ccstatusline) — a feature-rich,
+  TUI-configurable Claude Code status line (TypeScript). Its handling of
+  streaming-duplicate transcript entries and its git ahead/behind display
+  informed the transcript token de-duplication and the `↑ahead`/`↓behind`
+  indicators in this project.
 
 ## License
 

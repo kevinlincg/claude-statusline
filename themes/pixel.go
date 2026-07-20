@@ -67,6 +67,7 @@ func (t *PixelTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line1 += fmt.Sprintf(" %s*%d%s", PixelOrange, data.GitDirty, Reset)
 		}
+		line1 += FormatGitExtras(data, PixelGreen, PixelOrange, Dim)
 	}
 	sb.WriteString(line1)
 	sb.WriteString("\n")

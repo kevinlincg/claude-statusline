@@ -82,6 +82,7 @@ func (t *OnelinePowerlineTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			sb.WriteString(fmt.Sprintf(" ~%d", data.GitDirty))
 		}
+		sb.WriteString(FormatGitExtras(data, "", "", ""))
 		sb.WriteString(fmt.Sprintf(" %s", Reset))
 		sb.WriteString(PL5hrBg)
 		sb.WriteString(PLGitFg)

@@ -508,3 +508,81 @@ func TestVersionVariables(t *testing.T) {
 		t.Error("Date should not be empty")
 	}
 }
+
+func TestParseAheadBehind(t *testing.T) {
+	tests := []struct {
+		name       string
+		header     string
+		wantAhead  int
+		wantBehind int
+	}{
+		{"both", "## main...origin/main [ahead 2, behind 1]", 2, 1},
+		{"ahead only", "## main...origin/main [ahead 3]", 3, 0},
+		{"behind only", "## main...origin/main [behind 5]", 0, 5},
+		{"level with upstream", "## main...origin/main", 0, 0},
+		{"no upstream", "## feature-branch", 0, 0},
+		{"detached head", "## HEAD (no branch)", 0, 0},
+		{"behind then ahead order", "## dev...origin/dev [behind 4, ahead 7]", 7, 4},
+		{"malformed bracket", "## main...origin/main [ahead]", 0, 0},
+		{"not a header", "M  somefile.go", 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a, b := parseAheadBehind(tt.header)
+			if a != tt.wantAhead || b != tt.wantBehind {
+				t.Errorf("parseAheadBehind(%q) = (%d, %d); want (%d, %d)",
+					tt.header, a, b, tt.wantAhead, tt.wantBehind)
+			}
+		})
+	}
+}
+
+// TestCalculateSessionUsageDedup guards the streaming-duplicate bug: Claude Code
+// writes the same assistant message.id to the transcript multiple times with
+// identical usage; those must be counted once, not summed.
+func TestCalculateSessionUsageDedup(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/transcript.jsonl"
+
+	line := func(id string, out int) string {
+		return `{"sessionId":"s1","type":"assistant","timestamp":"2026-01-01T00:00:00Z",` +
+			`"message":{"id":"` + id + `","usage":{"input_tokens":2,"output_tokens":` +
+			strconv.Itoa(out) + `,"cache_read_input_tokens":50,"cache_creation_input_tokens":10}}}`
+	}
+
+	lines := []string{
+		line("msg_a", 100), // msg_a written 3x (streaming duplicates)
+		line("msg_a", 100),
+		line("msg_a", 100),
+		line("msg_b", 40), // msg_b once
+		line("msg_b", 40), // duplicate
+		// entry from a different session must be ignored entirely
+		`{"sessionId":"other","type":"assistant","message":{"id":"msg_x","usage":{"output_tokens":999}}}`,
+	}
+	if err := os.WriteFile(path, []byte(joinLines(lines)), 0o644); err != nil {
+		t.Fatalf("write transcript: %v", err)
+	}
+
+	got := calculateSessionUsage(path, "s1", "Sonnet", false)
+
+	if got.OutputTokens != 140 { // 100 + 40, each counted once
+		t.Errorf("OutputTokens = %d; want 140 (deduped)", got.OutputTokens)
+	}
+	if got.InputTokens != 4 { // 2 per distinct message * 2 messages
+		t.Errorf("InputTokens = %d; want 4 (deduped)", got.InputTokens)
+	}
+	if got.CacheReadTokens != 100 { // 50 * 2 distinct
+		t.Errorf("CacheReadTokens = %d; want 100 (deduped)", got.CacheReadTokens)
+	}
+	if got.CacheWriteTokens != 20 { // 10 * 2 distinct
+		t.Errorf("CacheWriteTokens = %d; want 20 (deduped)", got.CacheWriteTokens)
+	}
+}
+
+func joinLines(lines []string) string {
+	out := ""
+	for _, l := range lines {
+		out += l + "\n"
+	}
+	return out
+}

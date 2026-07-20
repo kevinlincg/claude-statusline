@@ -158,6 +158,7 @@ func (t *BoxedTheme) formatHeader(data StatusData) string {
 		if data.GitDirty > 0 {
 			git += fmt.Sprintf(" %s~%d%s", ColorOrange, data.GitDirty, Reset)
 		}
+		git += FormatGitExtras(data, ColorGreen, ColorOrange, Dim)
 	}
 
 	model := fmt.Sprintf("%s[%s%s%s %s%s]%s", ColorFrame, modelColor, Bold, modelIcon, data.ModelName, Reset+ColorFrame, Reset)

@@ -68,6 +68,7 @@ func (t *LaputaTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", LPGold, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, LPGreen, LPGold, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sDestination:%s %s%s",

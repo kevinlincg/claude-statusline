@@ -71,6 +71,7 @@ func (t *MechaTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", MCHYellow, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, MCHGreen, MCHYellow, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %s▶ MISSION:%s %s%s",

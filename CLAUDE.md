@@ -30,9 +30,9 @@ echo '{"model":{"display_name":"Claude Sonnet 4"},...}' | ./statusline
 **Single-file core**: Main logic in `statusline.go` (~1300 lines); themes live in `themes/`.
 
 **Concurrency model**: 6 goroutines run in parallel to minimize latency (see `collectData`):
-1. Git info (branch, staged/dirty counts)
+1. Git info (branch, staged/dirty counts, ahead/behind vs upstream — from `git status --porcelain --branch`; plus short SHA via `git rev-parse --short HEAD` and stash count via `git stash list`)
 2. Total hours calculation
-3. Session usage parsing (token counts & cost from transcript)
+3. Session usage parsing (token counts & cost from transcript; assistant entries are de-duplicated by `message.id` — Claude Code streams the same message multiple times with identical usage, so summing every line would over-count tokens ~2x+)
 4. Weekly stats loading
 5. Daily stats loading
 6. API usage: prefers the `rate_limits` JSON field (no network); falls back to the OAuth usage endpoint / Haiku probe (file-cached) only when absent

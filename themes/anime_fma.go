@@ -68,6 +68,7 @@ func (t *FMATheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", FMARed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, FMAGold, FMARed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sResearch:%s %s%s",

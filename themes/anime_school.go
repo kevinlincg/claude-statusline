@@ -75,6 +75,7 @@ func (t *SchoolTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SCHYellow, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SCHPink, SCHYellow, Dim)
 	}
 
 	line2 := fmt.Sprintf("    %s✎ Class:%s %s%s",

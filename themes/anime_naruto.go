@@ -73,6 +73,7 @@ func (t *NarutoTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", NarutoOrange, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, NarutoGreen, NarutoOrange, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %s│%s  %sMission:%s %s%s",

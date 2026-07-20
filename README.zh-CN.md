@@ -126,7 +126,7 @@ go build -o statusline .
 ### 第一行：基本信息
 - **模型**：当前使用的 Claude 模型（Opus/Sonnet/Haiku）
 - **项目**：当前工作目录名称
-- **Git 分支**：分支名称与状态（+已暂存/~未暂存）
+- **Git 分支**：分支名称与状态（`+已暂存` / `~未暂存` / `↑领先` / `↓落后` / `⚑stash` 数量 / `@short-sha`）
 - **Context**：Context Window 使用量进度条
 - **每日工时**：今日累计工作时间
 
@@ -169,6 +169,12 @@ go build -o statusline .
 ## 安全性
 
 发布的文件均经过签名并包含 SLSA 来源证明。请参阅 [SECURITY.md](SECURITY.md) 了解验证方式。
+
+## 致谢
+
+- [ccstatusline](https://github.com/sirmalloc/ccstatusline) — 功能丰富、可通过 TUI
+  配置的 Claude Code 状态栏（TypeScript）。本项目的 transcript token 去重处理，以及
+  `↑领先`/`↓落后` 指标，均参考其对流式重复记录的处理与 git 领先/落后显示。
 
 ## 许可证
 

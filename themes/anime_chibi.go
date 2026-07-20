@@ -67,6 +67,7 @@ func (t *ChibiTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", CHBPink, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, CHBGreen, CHBPink, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %s♡%s %s%s",

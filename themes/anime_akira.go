@@ -69,6 +69,7 @@ func (t *AkiraTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s!%d%s", AkiraRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, AkiraCyan, AkiraRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sLocation:%s %s%s",

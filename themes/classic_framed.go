@@ -164,6 +164,7 @@ func (t *ClassicFramedTheme) formatPathGitLine(data StatusData, width int) strin
 		if data.GitDirty > 0 {
 			git += fmt.Sprintf(" %s~%d%s", ColorOrange, data.GitDirty, Reset)
 		}
+		git += FormatGitExtras(data, ColorGreen, ColorOrange, Dim)
 	}
 
 	left := path + git

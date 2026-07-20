@@ -126,7 +126,7 @@ go build -o statusline .
 ### 1行目：基本情報
 - **モデル**：現在の Claude モデル（Opus/Sonnet/Haiku）
 - **プロジェクト**：現在の作業ディレクトリ名
-- **Git ブランチ**：ブランチ名とステータス（+ステージ済み/~未ステージ）
+- **Git ブランチ**：ブランチ名とステータス（`+ステージ済み` / `~未ステージ` / `↑先行` / `↓遅れ` / `⚑stash` 数 / `@short-sha`）
 - **Context**：Context Window 使用量プログレスバー
 - **日次作業時間**：今日の合計作業時間
 
@@ -169,6 +169,13 @@ go build -o statusline .
 ## セキュリティ
 
 リリースアーティファクトは署名され、SLSA 来歴が含まれています。検証方法は [SECURITY.md](SECURITY.md) をご覧ください。
+
+## 謝辞
+
+- [ccstatusline](https://github.com/sirmalloc/ccstatusline) — 機能豊富で TUI から
+  設定できる Claude Code ステータスライン（TypeScript）。本プロジェクトの transcript
+  トークン重複排除と `↑先行`/`↓遅れ` インジケーターは、同プロジェクトのストリーミング
+  重複エントリの扱いと git 先行/遅れ表示を参考にしています。
 
 ## ライセンス
 

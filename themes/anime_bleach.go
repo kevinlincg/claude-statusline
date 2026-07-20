@@ -70,6 +70,7 @@ func (t *BleachTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", BleachRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, BleachBlue, BleachRed, Dim)
 	}
 
 	line2 := fmt.Sprintf(" %sTarget:%s %s%s",

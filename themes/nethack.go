@@ -76,6 +76,7 @@ func (t *NetHackTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitStr += fmt.Sprintf(" %s~%d%s", NHOrange, data.GitDirty, Reset)
 		}
+		gitStr += FormatGitExtras(data, NHGreen, NHOrange, Dim)
 	}
 
 	line2 := fmt.Sprintf("%s│%s %sDlvl:%s%s%s%s  %s$:%s%s  %sT:%s%s",

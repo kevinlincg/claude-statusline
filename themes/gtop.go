@@ -104,6 +104,7 @@ func (t *GtopTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line4 += fmt.Sprintf(" %s*%d%s", GtopYellow, data.GitDirty, Reset)
 		}
+		line4 += FormatGitExtras(data, GtopBrightGreen, GtopYellow, Dim)
 	}
 	sb.WriteString(gtopPadLine(line4, width, GtopDark+"│"+Reset))
 

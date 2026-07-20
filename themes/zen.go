@@ -58,6 +58,7 @@ func (t *ZenTheme) Render(data StatusData) string {
 				ZenSoftGold, data.GitDirty, ZenDimGray,
 				Reset)
 		}
+		line1 += FormatGitExtras(data, ZenSoftGreen, ZenSoftGold, ZenDimGray)
 	}
 	sb.WriteString(line1)
 	sb.WriteString("\n")

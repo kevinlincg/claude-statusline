@@ -65,6 +65,7 @@ func (t *MononokeTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", MNKRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, MNKGreen, MNKRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("    %sTerritory:%s %s%s",

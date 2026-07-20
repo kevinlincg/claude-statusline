@@ -69,6 +69,7 @@ func (t *ShonenTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", SHNRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, SHNYellow, SHNRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %s▶▶%s %sARENa:%s %s%s",

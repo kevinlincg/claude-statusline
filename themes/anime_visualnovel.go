@@ -72,6 +72,7 @@ func (t *VisualNovelTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", VNPurple, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, VNPink, VNPurple, Dim)
 	}
 
 	line2 := fmt.Sprintf("%s「%sScene: %s%s%s」%s",

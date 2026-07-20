@@ -70,6 +70,7 @@ func (t *JoJoTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s~%d%s", JoJoRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, JoJoGreen, JoJoRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sUser:%s %s%s",

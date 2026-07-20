@@ -75,6 +75,7 @@ func (t *HUDTheme) formatLine1(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitContent += fmt.Sprintf("%s~%d%s", ColorOrange, data.GitDirty, Reset)
 		}
+		gitContent += FormatGitExtras(data, ColorGreen, ColorOrange, Dim)
 		git = fmt.Sprintf(" %s⟨%s%s⟩%s", HUDCyan, gitContent, HUDCyan, Reset)
 	}
 

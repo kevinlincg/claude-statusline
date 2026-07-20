@@ -81,6 +81,7 @@ func (t *BBSTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			line2 += fmt.Sprintf(" %s*%d%s", BBSBrightYellow, data.GitDirty, Reset)
 		}
+		line2 += FormatGitExtras(data, BBSBrightGreen, BBSBrightYellow, Dim)
 	}
 	sb.WriteString(PadRight(line2, 79))
 	sb.WriteString(BBSBrightBlue + "█" + Reset + "\n")

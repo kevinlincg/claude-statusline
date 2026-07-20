@@ -69,12 +69,17 @@ type StatusData struct {
 	GitBranch   string
 	GitStaged   int
 	GitDirty    int
+	GitAhead    int    // commits ahead of upstream (to push)
+	GitBehind   int    // commits behind upstream (to pull)
+	GitStash    int    // number of stash entries
+	GitSHA      string // short commit SHA of HEAD (e.g. "a1b2c3d")
 
 	// Session stats
 	TokenCount   int64
 	MessageCount int
 	SessionTime  string
 	CacheHitRate int
+	TokensPerSec float64 // session token throughput (tokens/second)
 
 	// Cost
 	SessionCost float64
@@ -129,6 +134,76 @@ func ListThemes() []Theme {
 }
 
 // Helper functions
+
+// FormatAheadBehind returns a compact " ↑N ↓N" fragment describing how many
+// commits the current branch is ahead of / behind its upstream. Each half is
+// emitted only when non-zero and wrapped in the supplied ANSI color (followed
+// by Reset). When a color is empty no color/Reset is added — useful for themes
+// (e.g. powerline) that manage their own coloring. Returns "" when the branch
+// is level with upstream or has no upstream.
+func FormatAheadBehind(ahead, behind int, aheadColor, behindColor string) string {
+	var b strings.Builder
+	if ahead > 0 {
+		if aheadColor != "" {
+			b.WriteString(fmt.Sprintf(" %s↑%d%s", aheadColor, ahead, Reset))
+		} else {
+			b.WriteString(fmt.Sprintf(" ↑%d", ahead))
+		}
+	}
+	if behind > 0 {
+		if behindColor != "" {
+			b.WriteString(fmt.Sprintf(" %s↓%d%s", behindColor, behind, Reset))
+		} else {
+			b.WriteString(fmt.Sprintf(" ↓%d", behind))
+		}
+	}
+	return b.String()
+}
+
+// FormatGitExtras renders the compact git suffix shown after the branch and
+// staged/dirty counts: commits ahead/behind upstream (↑N ↓N, using aheadColor/
+// behindColor), stash entry count (⚑N) and the short HEAD SHA (@abc1234), the
+// latter two in dimColor. Any color may be "" to emit that segment without ANSI
+// (e.g. powerline themes that manage their own coloring). Each segment appears
+// only when meaningful, so a clean repo with no stashes yields "".
+func FormatGitExtras(data StatusData, aheadColor, behindColor, dimColor string) string {
+	var b strings.Builder
+	b.WriteString(FormatAheadBehind(data.GitAhead, data.GitBehind, aheadColor, behindColor))
+	if data.GitStash > 0 {
+		if dimColor != "" {
+			b.WriteString(fmt.Sprintf(" %s⚑%d%s", dimColor, data.GitStash, Reset))
+		} else {
+			b.WriteString(fmt.Sprintf(" ⚑%d", data.GitStash))
+		}
+	}
+	if data.GitSHA != "" {
+		if dimColor != "" {
+			b.WriteString(fmt.Sprintf(" %s@%s%s", dimColor, data.GitSHA, Reset))
+		} else {
+			b.WriteString(fmt.Sprintf(" @%s", data.GitSHA))
+		}
+	}
+	return b.String()
+}
+
+// FormatLinesChanged renders session code churn (from Claude Code's cost.*
+// line counters) as "+A -R", using addColor/removeColor, or "" when nothing
+// changed this session.
+func FormatLinesChanged(added, removed int, addColor, removeColor string) string {
+	if added <= 0 && removed <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s+%d%s %s-%d%s", addColor, added, Reset, removeColor, removed, Reset)
+}
+
+// FormatTokensPerSec renders session token throughput compactly, e.g. "1.2k/s",
+// or "" when the rate is zero (single message / no measurable span).
+func FormatTokensPerSec(rate float64) string {
+	if rate <= 0 {
+		return ""
+	}
+	return FormatTokens(int64(rate)) + "/s"
+}
 
 // FormatTokens formats token count with K/M suffix
 func FormatTokens(tokens int64) string {

@@ -68,6 +68,7 @@ func (t *GundamTheme) Render(data StatusData) string {
 		if data.GitDirty > 0 {
 			gitInfo += fmt.Sprintf(" %s!%d%s", GundamRed, data.GitDirty, Reset)
 		}
+		gitInfo += FormatGitExtras(data, GundamGreen, GundamRed, Dim)
 	}
 
 	line2 := fmt.Sprintf("  %sMission:%s %s%s",
